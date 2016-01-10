@@ -31,7 +31,7 @@
 #include <sound/soc.h>
 #include <sound/jack.h>
 
-#include <soc/codec/pcm512x.h>
+#include "../codec/pcm512x.h"
 
 
 #define HIFIBERRY_DACPRO_NOCLOCK 0
