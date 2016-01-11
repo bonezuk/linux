@@ -54,26 +54,75 @@ struct dacplus_driver_data {
 
 static struct dacplus_driver_data *driver_data = NULL;
 
+static void pcm512x_print_register(struct regmap *regmap,const char *name,unsigned int reg,unsigned int mask)
+{
+	int err;
+	unsigned int val = 0;
+	
+	err = regmap_read(regmap,reg,&val);
+	if(err==0)
+	{
+		val &= mask;
+		printk(KERN_INFO "%s: %x\n",name,val);
+	}
+	else
+	{
+		printk(KERN_INFO "Failed to read %s register\n",name);
+	}
+}
+
+static int snd_rpi_hifiberry_dacplus_switch_ctl_info(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_info *uinfo)
+{
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
+	int platform_max;
+
+	if (!mc->platform_max)
+		mc->platform_max = mc->max;
+	platform_max = mc->platform_max;
+
+	if (platform_max == 1 && !strstr(kcontrol->id.name, " Volume"))
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
+	else
+		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
+
+	uinfo->count = snd_soc_volsw_is_stereo(mc) ? 2 : 1;
+	uinfo->value.integer.min = 0;
+	uinfo->value.integer.max = platform_max - mc->min;
+
+	return 0;
+}
+
 static int snd_rpi_hifiberry_dacplus_switch_ctl_get(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol)
 {
-	 struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	
+	int ret;
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
+
+	if(driver_data!=NULL)
+	{
+		pcm512x_print_register(driver_data->regmap,"Pg(0)/Reg(61)  PCM512x_DIGITAL_VOLUME_2",PCM512x_DIGITAL_VOLUME_2,0xff);
+		pcm512x_print_register(driver_data->regmap,"Pg(0)/Reg(62)  PCM512x_DIGITAL_VOLUME_3",PCM512x_DIGITAL_VOLUME_3,0xff);
+	}
+
 	if(driver_data!=NULL && component->regmap==NULL)
 	{
 		component->regmap = driver_data->regmap;
 	}
-	return snd_soc_get_volsw(kcontrol,ucontrol);
+	ret = snd_soc_get_volsw_range(kcontrol,ucontrol);
+	return ret;
 }
 
 static int snd_rpi_hifiberry_dacplus_switch_ctl_put(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol)
 {
-	 struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	int ret;
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	
 	if(driver_data!=NULL && component->regmap==NULL)
 	{
 		component->regmap = driver_data->regmap;
 	}
-	return snd_soc_put_volsw(kcontrol,ucontrol);
+	ret = snd_soc_put_volsw_range(kcontrol,ucontrol);
+	return ret;
 }
 
 static const DECLARE_TLV_DB_SCALE(digital_tlv,-10350,50,1);
@@ -84,10 +133,10 @@ static const struct snd_kcontrol_new rpi_hifiberry_dacplus_snd_controls[] = {
 			.name = "Master Volume",
 			.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ | SNDRV_CTL_ELEM_ACCESS_READWRITE,
 			.tlv.p = digital_tlv,
-			.info = snd_soc_info_volsw,
+			.info = snd_soc_info_volsw_range,
 			.get = snd_rpi_hifiberry_dacplus_switch_ctl_get,
 			.put = snd_rpi_hifiberry_dacplus_switch_ctl_put,
-			.private_value = SOC_DOUBLE_R_VALUE(PCM512x_DIGITAL_VOLUME_2,PCM512x_DIGITAL_VOLUME_3,48,255,1)
+			.private_value = SOC_DOUBLE_R_RANGE_VALUE(PCM512x_DIGITAL_VOLUME_2,PCM512x_DIGITAL_VOLUME_3,0,48,255,1)
 		},
 };
 
