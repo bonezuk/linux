@@ -31,7 +31,7 @@
 #include <sound/soc.h>
 #include <sound/tlv.h>
 
-#include <soc/codec/pcm512x.h>
+#include "../codecs/pcm512x.h"
 
 #define HIFIBERRY_DACPRO_NOCLOCK 0
 #define HIFIBERRY_DACPRO_CLK44EN 1
@@ -54,75 +54,26 @@ struct dacplus_driver_data {
 
 static struct dacplus_driver_data *driver_data = NULL;
 
-static void pcm512x_print_register(struct regmap *regmap,const char *name,unsigned int reg,unsigned int mask)
-{
-	int err;
-	unsigned int val = 0;
-	
-	err = regmap_read(regmap,reg,&val);
-	if(err==0)
-	{
-		val &= mask;
-		printk(KERN_INFO "%s: %x\n",name,val);
-	}
-	else
-	{
-		printk(KERN_INFO "Failed to read %s register\n",name);
-	}
-}
-
-static int snd_rpi_hifiberry_dacplus_switch_ctl_info(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_info *uinfo)
-{
-	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
-	int platform_max;
-
-	if (!mc->platform_max)
-		mc->platform_max = mc->max;
-	platform_max = mc->platform_max;
-
-	if (platform_max == 1 && !strstr(kcontrol->id.name, " Volume"))
-		uinfo->type = SNDRV_CTL_ELEM_TYPE_BOOLEAN;
-	else
-		uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-
-	uinfo->count = snd_soc_volsw_is_stereo(mc) ? 2 : 1;
-	uinfo->value.integer.min = 0;
-	uinfo->value.integer.max = platform_max - mc->min;
-
-	return 0;
-}
-
 static int snd_rpi_hifiberry_dacplus_switch_ctl_get(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol)
 {
-	int ret;
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
-	struct soc_mixer_control *mc = (struct soc_mixer_control *)kcontrol->private_value;
-
-	if(driver_data!=NULL)
-	{
-		pcm512x_print_register(driver_data->regmap,"Pg(0)/Reg(61)  PCM512x_DIGITAL_VOLUME_2",PCM512x_DIGITAL_VOLUME_2,0xff);
-		pcm512x_print_register(driver_data->regmap,"Pg(0)/Reg(62)  PCM512x_DIGITAL_VOLUME_3",PCM512x_DIGITAL_VOLUME_3,0xff);
-	}
 
 	if(driver_data!=NULL && component->regmap==NULL)
 	{
 		component->regmap = driver_data->regmap;
 	}
-	ret = snd_soc_get_volsw_range(kcontrol,ucontrol);
-	return ret;
+	return snd_soc_get_volsw_range(kcontrol,ucontrol);
 }
 
 static int snd_rpi_hifiberry_dacplus_switch_ctl_put(struct snd_kcontrol *kcontrol,struct snd_ctl_elem_value *ucontrol)
 {
-	int ret;
 	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
 	
 	if(driver_data!=NULL && component->regmap==NULL)
 	{
 		component->regmap = driver_data->regmap;
 	}
-	ret = snd_soc_put_volsw_range(kcontrol,ucontrol);
-	return ret;
+	return snd_soc_put_volsw_range(kcontrol,ucontrol);
 }
 
 static const DECLARE_TLV_DB_SCALE(digital_tlv,-10350,50,1);
