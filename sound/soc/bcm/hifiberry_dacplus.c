@@ -89,6 +89,7 @@ static const struct snd_kcontrol_new rpi_hifiberry_dacplus_snd_controls[] = {
 			.put = snd_rpi_hifiberry_dacplus_switch_ctl_put,
 			.private_value = SOC_DOUBLE_R_RANGE_VALUE(PCM512x_DIGITAL_VOLUME_2,PCM512x_DIGITAL_VOLUME_3,0,48,255,1)
 		},
+		SOC_DOUBLE("Master Playback Switch",PCM512x_MUTE,PCM512x_RQML_SHIFT,PCM512x_RQMR_SHIFT,1,1),
 };
 
 static void snd_rpi_hifiberry_dacplus_select_clk(struct snd_soc_codec *codec,
