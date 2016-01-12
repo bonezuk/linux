@@ -59,7 +59,7 @@ static void snd_rpi_hifiberry_dacplus_ctl_set_map(struct snd_kcontrol *kctrl)
 	struct snd_soc_component *component = snd_kcontrol_chip(kctrl);
 
 	if (driver_data != NULL && component->regmap == NULL)
-		component->regmap = driver_data->regmap;	
+		component->regmap = driver_data->regmap;
 }
 
 static int snd_rpi_hifiberry_dacplus_switch_ctl_get(struct snd_kcontrol *kctrl,
@@ -113,7 +113,8 @@ static const struct snd_kcontrol_new rpi_hifiberry_dacplus_snd_controls[] = {
 			.info = snd_soc_info_volsw,
 			.get = snd_rpi_hifiberry_dacplus_mute_ctl_get,
 			.put = snd_rpi_hifiberry_dacplus_mute_ctl_put,
-			.private_value = SOC_DOUBLE_VALUE(PCM512x_MUTE, PCM512x_RQML_SHIFT,
+			.private_value = SOC_DOUBLE_VALUE(PCM512x_MUTE,
+				PCM512x_RQML_SHIFT,
 				PCM512x_RQMR_SHIFT, 1, 1, 0)
 		},
 };
