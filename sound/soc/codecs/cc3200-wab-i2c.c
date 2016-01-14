@@ -14,12 +14,15 @@
  * General Public License for more details.
  */
 
-#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
 
+#include <sound/core.h>
+#include <sound/pcm.h>
+#include <sound/pcm_params.h>
 #include <sound/soc.h>
+#include <sound/jack.h>
 
 /*----------------------------------------------------------------------------------*/
 
@@ -37,12 +40,12 @@
 struct cc3200_wab_priv
 {
 	struct regmap *regmap;
-}
+};
 
 /*----------------------------------------------------------------------------------*/
 
 static const struct i2c_device_id cc3200_wab_i2c_id[] = {
-	{ "cc3200-wab", },
+	{ "cc3200-wab", 0 },
 	{ }
 };
 MODULE_DEVICE_TABLE(i2c, cc3200_wab_i2c_id);
@@ -91,7 +94,7 @@ const struct regmap_config cc3200_wab_regmap = {
 
 	.max_register = CC3200_WAB_MAX_REGISTER,
 	.reg_defaults = cc3200_wab_reg_defaults,
-	.num_reg_defaults = ARRAY_SIZE(pcm512x_reg_defaults),
+	.num_reg_defaults = ARRAY_SIZE(cc3200_wab_reg_defaults),
 	.cache_type = REGCACHE_RBTREE,
 };
 
@@ -135,27 +138,10 @@ static struct snd_soc_codec_driver cc3200_wab_soc_codec_dev;
 
 /*----------------------------------------------------------------------------------*/
 
-static int cc3200_wab_probe(struct device *dev, struct regmap *regmap)
-{
-	struct cc3200_wab_priv *cc3200;
-	
-	cc3200 = devm_kzalloc(dev,sizeof(struct cc3200_wab_priv), GFP_KERNEL);
-	if(cc3200==NULL)
-	{
-		return -ENOMEM;
-	}
-	
-	dev_set_drvdata(dev, cc3200);
-	cc3200->regmap = regmap;
-
-	return snd_soc_register_codec(&dev->dev, &cc3200_wab_soc_codec_dev, &cc3200_wab_dai, 1);
-}
-
-/*----------------------------------------------------------------------------------*/
-
 static int cc3200_wab_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
 {
 	struct regmap *regmap;
+	struct cc3200_wab_priv *cc3200;
 	struct regmap_config config = cc3200_wab_regmap;
 
 	/* msb needs to be set to enable auto-increment of addresses */
@@ -167,35 +153,39 @@ static int cc3200_wab_i2c_probe(struct i2c_client *i2c,const struct i2c_device_i
 	{
 		return PTR_ERR(regmap);
 	}
-	return cc3200_wab_probe(&i2c->dev, regmap);
-}
+	
+	cc3200 = devm_kzalloc(&i2c->dev,sizeof(struct cc3200_wab_priv),GFP_KERNEL);
+	if(cc3200==NULL)
+	{
+		return -ENOMEM;
+	}
+	
+	dev_set_drvdata(&i2c->dev,cc3200);
+	cc3200->regmap = regmap;
 
-/*----------------------------------------------------------------------------------*/
+	return snd_soc_register_codec(&i2c->dev, &cc3200_wab_soc_codec_dev, &cc3200_wab_dai, 1);
 
-static void cc3200_wab_remove(struct device *dev)
-{
-	snd_soc_unregister_codec(dev);
 }
 
 /*----------------------------------------------------------------------------------*/
 
 static int cc3200_wab_i2c_remove(struct i2c_client *i2c)
 {
-	cc3200_wab_remove(&i2c->dev);
+	snd_soc_unregister_codec(&i2c->dev);
 	return 0;
 }
 
 /*----------------------------------------------------------------------------------*/
 
 static struct i2c_driver cc3200_wab_i2c_driver = {
-	.probe 		= cc3200_wab_i2c_probe,
-	.remove 	= cc3200_wab_i2c_remove,
-	.id_table	= cc3200_wab_i2c_id,
 	.driver		= {
 		.name	= "cc3200-wab.codec",
 		.owner	= THIS_MODULE,
 		.of_match_table = cc3200_wab_of_match,
 	},
+	.probe 		= cc3200_wab_i2c_probe,
+	.remove 	= cc3200_wab_i2c_remove,
+	.id_table	= cc3200_wab_i2c_id,
 };
 
 /*----------------------------------------------------------------------------------*/
@@ -205,5 +195,3 @@ module_i2c_driver(cc3200_wab_i2c_driver);
 MODULE_DESCRIPTION("CC3200 WAB codec driver - I2C");
 MODULE_AUTHOR("Stuart MacLean <stuart@hifiberry.com>");
 MODULE_LICENSE("GPL v2");
-
-/*----------------------------------------------------------------------------------*/
