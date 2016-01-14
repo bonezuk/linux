@@ -32,11 +32,11 @@ static int hifiberry_cc3200_dac_init(struct snd_soc_pcm_runtime *rtd)
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_cc3200_dac_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params)
+static int hifiberry_cc3200_dac_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	return snd_soc_dai_set_bclk_ratio(cpu_dai, 32*2);
+	return snd_soc_dai_set_bclk_ratio(cpu_dai,32*2);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -85,9 +85,9 @@ static int hifiberry_cc3200_dac_probe(struct platform_device *pdev)
 	{
 		struct device_node *i2s_node;
 		struct snd_soc_dai_link *dai = &hifiberry_cc3200_dac_dai[0];
-		i2s_node = of_parse_phandle(pdev->dev.of_node, "i2s-controller", 0);
+		i2s_node = of_parse_phandle(pdev->dev.of_node,"i2s-controller",0);
 
-		if (i2s_node) 
+		if(i2s_node) 
 		{
 			dai->cpu_dai_name = NULL;
 			dai->cpu_of_node = i2s_node;
@@ -99,7 +99,7 @@ static int hifiberry_cc3200_dac_probe(struct platform_device *pdev)
 	ret = snd_soc_register_card(&hifiberry_cc3200_dac);
 	if(ret)
 	{
-		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
+		dev_err(&pdev->dev,"snd_soc_register_card() failed: %d\n",ret);
 	}
 	return ret;
 }
@@ -114,21 +114,21 @@ static int hifiberry_cc3200_dac_remove(struct platform_device *pdev)
 /*----------------------------------------------------------------------------------*/
 
 static const struct of_device_id hifiberry_cc3200_dac_of_match[] = {
-	{ .compatible = "hifiberry_cc3200,hifiberry_cc3200_dac", },
-	{},
+	{.compatible = "hifiberry_cc3200,hifiberry_cc3200_dac",},
+{},
 };
-MODULE_DEVICE_TABLE(of, hifiberry_cc3200_dac_of_match);
+MODULE_DEVICE_TABLE(of,hifiberry_cc3200_dac_of_match);
 
 /*----------------------------------------------------------------------------------*/
 
 static struct platform_driver hifiberry_cc3200_dac_driver = {
-        .driver = {
-                .name   = "hifiberry-cc3200-dac",
-                .owner  = THIS_MODULE,
-                .of_match_table = hifiberry_cc3200_dac_of_match,
-        },
-        .probe          = hifiberry_cc3200_dac_probe,
-        .remove         = hifiberry_cc3200_dac_remove,
+	.driver = {
+	.name   = "snd-hifiberry-cc3200",
+	.owner  = THIS_MODULE,
+	.of_match_table = hifiberry_cc3200_dac_of_match,
+},
+	.probe          = hifiberry_cc3200_dac_probe,
+	.remove         = hifiberry_cc3200_dac_remove,
 };
 
 /*----------------------------------------------------------------------------------*/

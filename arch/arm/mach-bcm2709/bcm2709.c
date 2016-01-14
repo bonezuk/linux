@@ -741,6 +741,20 @@ static struct i2c_board_info __initdata snd_tas5713_i2c_devices[] = {
 };
 #endif
 
+#if defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_CC3200) || defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_CC3200_MODULE)
+static struct platform_device snd_hifiberry_cc3200_device = {
+        .name = "snd-hifiberry-cc3200",
+        .id = 0,
+        .num_resources = 0,
+};
+
+static struct i2c_board_info __initdata snd_cc3200_wab_i2c_devices[] = {
+        {
+                I2C_BOARD_INFO("cc3200-wab", 0x1c)
+        },
+};
+#endif
+
 #if defined(CONFIG_SND_BCM2708_SOC_RPI_DAC) || defined(CONFIG_SND_BCM2708_SOC_RPI_DAC_MODULE)
 static struct platform_device snd_rpi_dac_device = {
         .name = "snd-rpi-dac",
@@ -974,6 +988,11 @@ void __init bcm2709_init(void)
 #if defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_AMP) || defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_AMP_MODULE)
         bcm_register_device_dt(&snd_hifiberry_amp_device);
         i2c_register_board_info_dt(1, snd_tas5713_i2c_devices, ARRAY_SIZE(snd_tas5713_i2c_devices));
+#endif
+
+#if defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_CC3200) || defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_CC3200_MODULE)
+        bcm_register_device_dt(&snd_hifiberry_cc3200_device);
+        i2c_register_board_info_dt(1, snd_cc3200_wab_i2c_devices, ARRAY_SIZE(snd_cc3200_wab_i2c_devices));
 #endif
 
 #if defined(CONFIG_SND_BCM2708_SOC_RPI_DAC) || defined(CONFIG_SND_BCM2708_SOC_RPI_DAC_MODULE)

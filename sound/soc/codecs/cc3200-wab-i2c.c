@@ -179,7 +179,7 @@ static int cc3200_wab_i2c_remove(struct i2c_client *i2c)
 
 static struct i2c_driver cc3200_wab_i2c_driver = {
 	.driver		= {
-		.name	= "cc3200-wab.codec",
+		.name	= "cc3200-wab",
 		.owner	= THIS_MODULE,
 		.of_match_table = cc3200_wab_of_match,
 	},
