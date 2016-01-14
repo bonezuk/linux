@@ -124,7 +124,7 @@ static const struct snd_soc_dai_ops cc3200_wab_dai_ops = {
 };
 
 static struct snd_soc_dai_driver cc3200_wab_dai = {
-	.name = "cc3200-wab.hifi",
+	.name = "cc3200wab-hifi",
 	.playback = {
 		.channels_min = 2,
 		.channels_max = 2,
