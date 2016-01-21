@@ -69,6 +69,7 @@ static struct dacplus_driver_data *driver_data = NULL;
 
 /*-------------------------------------------------------------------------------------------*/
 
+/*
 static void pcm512x_print_register(struct pcm512x_priv *pcm512x,const char *name,unsigned int reg,unsigned int mask)
 {
 	int err;
@@ -395,6 +396,7 @@ static void snd_rpi_hifiberry_dump_misc_coefficients(struct pcm512x_priv *pcm512
 	pcm512x_print_coefficient(pcm512x,"C180 (ADD_OF_filter_in_L)",50,8);
 	pcm512x_print_coefficient(pcm512x,"C181 (ADD_OF_filter_in_R)",50,12);
 }
+*/
 
 static void snd_rpi_hifiberry_dump(struct snd_soc_codec *codec)
 {
@@ -425,39 +427,39 @@ static void snd_rpi_hifiberry_dacplus_ctl_set_map(struct snd_kcontrol *kctrl)
 {
 	struct snd_soc_component *component = snd_kcontrol_chip(kctrl);
 
-	if (driver_data != NULL && component->regmap == NULL)
+	if(driver_data != NULL && component->regmap == NULL)
 		component->regmap = driver_data->regmap;
 }
 
 static int snd_rpi_hifiberry_dacplus_switch_ctl_get(struct snd_kcontrol *kctrl,
-	struct snd_ctl_elem_value *uctrl)
+                                                    struct snd_ctl_elem_value *uctrl)
 {
 	snd_rpi_hifiberry_dacplus_ctl_set_map(kctrl);
-	return snd_soc_get_volsw_range(kctrl, uctrl);
+	return snd_soc_get_volsw_range(kctrl,uctrl);
 }
 
 static int snd_rpi_hifiberry_dacplus_switch_ctl_put(struct snd_kcontrol *kctrl,
-	struct snd_ctl_elem_value *uctrl)
+                                                    struct snd_ctl_elem_value *uctrl)
 {
 	snd_rpi_hifiberry_dacplus_ctl_set_map(kctrl);
-	return snd_soc_put_volsw_range(kctrl, uctrl);
+	return snd_soc_put_volsw_range(kctrl,uctrl);
 }
 
 static int snd_rpi_hifiberry_dacplus_mute_ctl_get(struct snd_kcontrol *kctrl,
-	struct snd_ctl_elem_value *uctrl)
+                                                  struct snd_ctl_elem_value *uctrl)
 {
 	snd_rpi_hifiberry_dacplus_ctl_set_map(kctrl);
-	return snd_soc_get_volsw(kctrl, uctrl);
+	return snd_soc_get_volsw(kctrl,uctrl);
 }
 
 static int snd_rpi_hifiberry_dacplus_mute_ctl_put(struct snd_kcontrol *kctrl,
-	struct snd_ctl_elem_value *uctrl)
+                                                  struct snd_ctl_elem_value *uctrl)
 {
 	snd_rpi_hifiberry_dacplus_ctl_set_map(kctrl);
-	return snd_soc_put_volsw(kctrl, uctrl);
+	return snd_soc_put_volsw(kctrl,uctrl);
 }
 
-static const DECLARE_TLV_DB_SCALE(digital_tlv, -10350, 50, 1);
+static const DECLARE_TLV_DB_SCALE(digital_tlv,-10350,50,1);
 
 /*-------------------------------------------------------------------------------------------*/
 /* BiQuad Controls */
@@ -518,46 +520,37 @@ static int snd_rpi_hifiberry_dacplus_biquad_ctl_put(struct snd_kcontrol *kcontro
 	return 0;
 }
 
-static int snd_rpi_hifiberry_dacplus_switch_ctl_get(struct snd_kcontrol *kcontrol,
-                                                    struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = 0;
-	return 0;
-}
-
-static int snd_rpi_hifiberry_dacplus_switch_ctl_put(struct snd_kcontrol *kcontrol,
-                                                    struct snd_ctl_elem_value *ucontrol)
-{
-	return 0;
-}
-
 static const struct snd_kcontrol_new rpi_hifiberry_dacplus_snd_controls[] = {
-		{
-			.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-			.name = "Master Volume",
-			.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ
-				 | SNDRV_CTL_ELEM_ACCESS_READWRITE,
-			.tlv.p = digital_tlv,
-			.info = snd_soc_info_volsw_range,
-			.get = snd_rpi_hifiberry_dacplus_switch_ctl_get,
-			.put = snd_rpi_hifiberry_dacplus_switch_ctl_put,
-			.private_value = SOC_DOUBLE_R_RANGE_VALUE(
-				PCM512x_DIGITAL_VOLUME_2,
-				PCM512x_DIGITAL_VOLUME_3,
-				0, 48, 255, 1)
-		},
-		{
-			.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
-			.name = "Master Playback Switch",
-			.info = snd_soc_info_volsw,
-			.get = snd_rpi_hifiberry_dacplus_mute_ctl_get,
-			.put = snd_rpi_hifiberry_dacplus_mute_ctl_put,
-			.private_value = SOC_DOUBLE_VALUE(PCM512x_MUTE,
-				PCM512x_RQML_SHIFT,
-				PCM512x_RQMR_SHIFT, 1, 1, 0)
-		},
-	
-	SOC_SINGLE_EXT("Max Overclock Clocker PLL",SND_SOC_NOPM,0,20,0,snd_rpi_hifiberry_dacplus_switch_ctl_get,snd_rpi_hifiberry_dacplus_switch_ctl_put),
+{
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Master Volume",
+	.access = SNDRV_CTL_ELEM_ACCESS_TLV_READ
+		 | SNDRV_CTL_ELEM_ACCESS_READWRITE,
+	.tlv.p = digital_tlv,
+	.info = snd_soc_info_volsw_range,
+	.get = snd_rpi_hifiberry_dacplus_switch_ctl_get,
+	.put = snd_rpi_hifiberry_dacplus_switch_ctl_put,
+	.private_value = SOC_DOUBLE_R_RANGE_VALUE(
+	                                          PCM512x_DIGITAL_VOLUME_2,
+	                                          PCM512x_DIGITAL_VOLUME_3,
+	                                          0,
+	                                          48,
+	                                          255,
+	                                          1)
+},
+{
+	.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
+	.name = "Master Playback Switch",
+	.info = snd_soc_info_volsw,
+	.get = snd_rpi_hifiberry_dacplus_mute_ctl_get,
+	.put = snd_rpi_hifiberry_dacplus_mute_ctl_put,
+	.private_value = SOC_DOUBLE_VALUE(PCM512x_MUTE,
+	                                  PCM512x_RQML_SHIFT,
+	                                  PCM512x_RQMR_SHIFT,
+	                                  1,
+	                                  1,
+	                                  0)
+},
 
 	SND_SOC_BYTES_EXT("BiQuad 1 Coefficient A",165,snd_rpi_hifiberry_dacplus_biquad_ctl_get,snd_rpi_hifiberry_dacplus_biquad_ctl_put), /*  0 */
 	SND_SOC_BYTES_EXT("BiQuad 1 Coefficient B",165,snd_rpi_hifiberry_dacplus_biquad_ctl_get,snd_rpi_hifiberry_dacplus_biquad_ctl_put), /*  1 */
@@ -769,7 +762,7 @@ static int snd_rpi_hifiberry_dacplus_init(struct snd_soc_pcm_runtime *rtd)
 	struct snd_soc_codec *codec = rtd->codec;
 	struct pcm512x_priv *priv;
 
-	err = snd_rpi_hifiberry_dacplus_init_driver_data(rtd->card->dev, codec);
+	err = snd_rpi_hifiberry_dacplus_init_driver_data(rtd->card->dev,codec);
 	if(err)
 		return err;
 
