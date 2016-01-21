@@ -42,6 +42,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_AK5386
 	select SND_SOC_ALC5623 if I2C
 	select SND_SOC_ALC5632 if I2C
+	select SND_BCM2708_SOC_HIFIBERRY_CC3200 if I2C
 	select SND_SOC_CQ0093VC if MFD_DAVINCI_VOICECODEC
 	select SND_SOC_CS35L32 if I2C
 	select SND_SOC_CS42L51_I2C if I2C
@@ -334,6 +335,10 @@ config SND_SOC_ALC5623
 
 config SND_SOC_ALC5632
 	tristate
+
+config SND_BCM2708_SOC_HIFIBERRY_CC3200
+	tristate "CC3200 WiFi Audio Bridge"
+	depends on I2C
 
 config SND_SOC_CQ0093VC
 	tristate
