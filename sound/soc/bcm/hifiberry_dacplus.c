@@ -32,7 +32,7 @@
 #include <sound/tlv.h>
 #include <sound/jack.h>
 
-#include "../codec/pcm512x.h"
+#include "../codecs/pcm512x.h"
 
 
 #define HIFIBERRY_DACPRO_NOCLOCK 0
