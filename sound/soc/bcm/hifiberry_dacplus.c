@@ -266,15 +266,18 @@ static int snd_rpi_hifiberry_dacplus_is_coefficients(void)
 
 static int snd_rpi_hifiberry_dacplus_load_default_coefficients(struct snd_soc_codec *codec)
 {
-	int pageno,page,reg,res = 0;
+	int i,j,page,reg,res = 0;
 	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
 	
-	for(pageno=0; pageno<PCM512X_NUMBER_COEFFICIENT_PAGES && !res; pageno++)
+	for(i=0;i<2;i++)
 	{
-		page = hifiberry_dacplus_coeff_pages[pageno];
-		for(reg=8; reg<128 && !res; reg++)
+		for(j=0;j<PCM512X_NUMBER_COEFFICIENT_PAGES;j++)
 		{
-			res = regmap_write(pcm512x->regmap,PCM512x_PAGE_BASE(page) + reg,(unsigned int)hifiberry_dacplus_coeff_44kHz[pageno][reg-8]);
+			page = j + (!i) ? 44 : 62;
+			for(reg=8; reg<128 && !res; reg++)
+			{
+				res = regmap_write(pcm512x->regmap,PCM512x_PAGE_BASE(page) + reg,(unsigned int)hifiberry_dacplus_coeff_44kHz[j][reg-8]);
+			}
 		}
 	}
 	return res;
