@@ -214,6 +214,7 @@ static const struct snd_kcontrol_new rpi_hifiberry_dacplus_snd_controls[] = {
 	SND_SOC_BYTES_EXT("BiQuad 8 Coefficient",165,snd_rpi_hifiberry_dacplus_biquad_ctl_get,snd_rpi_hifiberry_dacplus_biquad_ctl_put)    /* 11 */
 };
 
+/*
 static int snd_rpi_hifiberry_dacplus_sample_rate_index(int sample_rate)
 {
 	int idx;
@@ -247,6 +248,7 @@ static int snd_rpi_hifiberry_dacplus_sample_rate_index(int sample_rate)
 	}
 	return idx;
 }
+*/
 
 static int snd_rpi_hifiberry_dacplus_is_coefficients(void)
 {
@@ -269,9 +271,9 @@ static int snd_rpi_hifiberry_dacplus_load_default_coefficients(struct snd_soc_co
 	int i,j,page,reg,res = 0;
 	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
 	
-	for(i=0;i<2;i++)
+	for(i=0;i<2 && !res;i++)
 	{
-		for(j=0;j<PCM512X_NUMBER_COEFFICIENT_PAGES;j++)
+		for(j=0;j<PCM512X_NUMBER_COEFFICIENT_PAGES && !res;j++)
 		{
 			page = j + (!i) ? 44 : 62;
 			for(reg=8; reg<128 && !res; reg++)
@@ -324,6 +326,7 @@ static int snd_rpi_hifiberry_dacplus_apply_coefficients(struct snd_soc_codec *co
 	
 	snd_soc_update_bits(codec,PCM512x_CRAM_CTRL,0x04,0x04);
 	snd_soc_update_bits(codec,PCM512x_DSP_PROGRAM,0x1f,0x05);
+	snd_soc_update_bits(codec,PCM512x_FS_SPEED_MODE,0x10,0x00);
 	snd_soc_update_bits(codec,PCM512x_POWER,0x10,0x00);
 	
 	return res;
