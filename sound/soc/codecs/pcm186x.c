@@ -193,49 +193,49 @@ const struct regmap_config pcm186x_regmap = {
 
 /*----------------------------------------------------------------------------------*/
 
-static int cc3200_wab_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
-static int cc3200_wab_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
+static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
 	return 0;
 }
 
-static int cc3200_wab_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+static int pcm186x_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
 	return 0;
 }
 
 /*----------------------------------------------------------------------------------*/
 
-static const struct snd_soc_dai_ops cc3200_wab_dai_ops = {
-	.startup = cc3200_wab_dai_startup,
-	.hw_params = cc3200_wab_hw_params,
-	.set_fmt = cc3200_wab_set_fmt,
+static const struct snd_soc_dai_ops pcm186x_dai_ops = {
+	.startup = pcm186x_dai_startup,
+	.hw_params = pcm186x_hw_params,
+	.set_fmt = pcm186x_set_fmt,
 };
 
-static struct snd_soc_dai_driver cc3200_wab_dai = {
-	.name = "cc3200wab-hifi",
-	.playback = {
+static struct snd_soc_dai_driver pcm186x_dai = {
+	.name = "pcm186x-hifi",
+	.capture = {
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_44100,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE
 	},
-	.ops = &cc3200_wab_dai_ops,
+	.ops = &pcm186x_dai_ops,
 };
 
-static struct snd_soc_codec_driver cc3200_wab_soc_codec_dev;
+static struct snd_soc_codec_driver pcm186x_soc_codec_dev;
 
 /*----------------------------------------------------------------------------------*/
 
-static int cc3200_wab_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
+static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
 {
 	struct regmap *regmap;
-	struct cc3200_wab_priv *cc3200;
-	struct regmap_config config = cc3200_wab_regmap;
+	struct pcm186x_priv *pcm186x;
+	struct regmap_config config = pcm186x_regmap;
 
 	/* msb needs to be set to enable auto-increment of addresses */
 	config.read_flag_mask = 0x80;
@@ -247,22 +247,22 @@ static int cc3200_wab_i2c_probe(struct i2c_client *i2c,const struct i2c_device_i
 		return PTR_ERR(regmap);
 	}
 	
-	cc3200 = devm_kzalloc(&i2c->dev,sizeof(struct cc3200_wab_priv),GFP_KERNEL);
-	if(cc3200==NULL)
+	pcm186x = devm_kzalloc(&i2c->dev,sizeof(struct cc3200_wab_priv),GFP_KERNEL);
+	if(pcm186x==NULL)
 	{
 		return -ENOMEM;
 	}
 	
-	dev_set_drvdata(&i2c->dev,cc3200);
-	cc3200->regmap = regmap;
+	dev_set_drvdata(&i2c->dev,pcm186x);
+	pcm186x->regmap = regmap;
 
-	return snd_soc_register_codec(&i2c->dev, &cc3200_wab_soc_codec_dev, &cc3200_wab_dai, 1);
+	return snd_soc_register_codec(&i2c->dev, &pcm186x_soc_codec_dev, &pcm186x_wab_dai, 1);
 
 }
 
 /*----------------------------------------------------------------------------------*/
 
-static int cc3200_wab_i2c_remove(struct i2c_client *i2c)
+static int pcm186x_i2c_probe(struct i2c_client *i2c)
 {
 	snd_soc_unregister_codec(&i2c->dev);
 	return 0;
@@ -270,21 +270,21 @@ static int cc3200_wab_i2c_remove(struct i2c_client *i2c)
 
 /*----------------------------------------------------------------------------------*/
 
-static struct i2c_driver cc3200_wab_i2c_driver = {
+static struct i2c_driver pcm186x_i2c_driver = {
 	.driver		= {
-		.name	= "cc3200-wab",
+		.name	= "pcm186x",
 		.owner	= THIS_MODULE,
-		.of_match_table = cc3200_wab_of_match,
+		.of_match_table = pcm186x_of_match,
 	},
-	.probe 		= cc3200_wab_i2c_probe,
-	.remove 	= cc3200_wab_i2c_remove,
-	.id_table	= cc3200_wab_i2c_id,
+	.probe 		= pcm186x_i2c_probe,
+	.remove 	= pcm186x_i2c_remove,
+	.id_table	= pcm186x_i2c_id,
 };
 
 /*----------------------------------------------------------------------------------*/
 
-module_i2c_driver(cc3200_wab_i2c_driver);
+module_i2c_driver(pcm186x_i2c_driver);
 
-MODULE_DESCRIPTION("CC3200 WAB codec driver - I2C");
+MODULE_DESCRIPTION("Texas Instruments PCM186x codec driver - I2C");
 MODULE_AUTHOR("Stuart MacLean <stuart@hifiberry.com>");
 MODULE_LICENSE("GPL v2");

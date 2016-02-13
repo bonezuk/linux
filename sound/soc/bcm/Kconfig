@@ -19,6 +19,13 @@ config SND_BCM2708_SOC_I2S
 	  the BCM2708 I2S interface. You will also need
 	  to select the audio interfaces to support below.
 
+config SND_BCM2708_SOC_HIFIBERRY_ADC
+        tristate "Support for HifiBerry PCM186x ADC"
+        depends on SND_BCM2708_SOC_I2S || SND_BCM2835_SOC_I2S
+        select SND_SOC_PCM186x
+        help
+         Say Y or M if you want to add support for HifiBerry PCM186x ADC.
+
 config SND_BCM2708_SOC_HIFIBERRY_DAC
         tristate "Support for HifiBerry DAC"
         depends on SND_BCM2708_SOC_I2S || SND_BCM2835_SOC_I2S
