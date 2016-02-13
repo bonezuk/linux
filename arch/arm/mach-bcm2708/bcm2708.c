@@ -969,6 +969,11 @@ void __init bcm2708_init(void)
         i2c_register_board_info_dt(1, snd_tas5713_i2c_devices, ARRAY_SIZE(snd_tas5713_i2c_devices));
 #endif
 
+#if defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_ADC) || defined(CONFIG_SND_BCM2708_SOC_HIFIBERRY_ADC_MODULE)
+        bcm_register_device_dt(&snd_hifiberry_adc_device);
+        i2c_register_board_info_dt(1, snd_pcm186x_hbadc_i2c_devices, ARRAY_SIZE(snd_pcm186x_hbadc_i2c_devices));
+#endif
+
 #if defined(CONFIG_SND_BCM2708_SOC_RPI_DAC) || defined(CONFIG_SND_BCM2708_SOC_RPI_DAC_MODULE)
         bcm_register_device_dt(&snd_rpi_dac_device);
         bcm_register_device_dt(&snd_pcm1794a_codec_device);
