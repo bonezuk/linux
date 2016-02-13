@@ -111,6 +111,6 @@
 #define PCM186x_CLK_STATUS                      (PCM186x_PAGE_BASE(0) + 117)
 #define PCM186x_DVDD_STATUS                     (PCM186x_PAGE_BASE(0) + 120)
 
-#define PCM186X_MAX_REGISTER                    (PCM186X_PAGE_BASE(253) + 20)
+#define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 20)
 
 #endif

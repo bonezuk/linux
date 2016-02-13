@@ -34,7 +34,7 @@ struct pcm186x_priv
 };
 
 /*----------------------------------------------------------------------------------*/
-/* I2C Address definition
+/* I2C Address definition */
 /*----------------------------------------------------------------------------------*/
 
 static const struct i2c_device_id pcm186x_i2c_id[] = {
@@ -168,7 +168,7 @@ static bool pcm186x_volatile(struct device *dev, unsigned int reg)
 static const struct regmap_range_cfg pcm186x_range = {
 	.name = "Pages", 
 	.range_min = PCM186x_VIRT_BASE,
-	.range_max = PCM186X_MAX_REGISTER,
+	.range_max = PCM186x_MAX_REGISTER,
 	.selector_reg = PCM186x_PAGE,
 	.selector_mask = 0xff,
 	.window_start = 0,
@@ -185,7 +185,7 @@ const struct regmap_config pcm186x_regmap = {
 	.ranges = &pcm186x_range,
 	.num_ranges = 1,
 
-	.max_register = PCM186X_MAX_REGISTER,
+	.max_register = PCM186x_MAX_REGISTER,
 	.reg_defaults = pcm186x_reg_defaults,
 	.num_reg_defaults = ARRAY_SIZE(pcm186x_reg_defaults),
 	.cache_type = REGCACHE_RBTREE,
@@ -247,7 +247,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 		return PTR_ERR(regmap);
 	}
 	
-	pcm186x = devm_kzalloc(&i2c->dev,sizeof(struct cc3200_wab_priv),GFP_KERNEL);
+	pcm186x = devm_kzalloc(&i2c->dev,sizeof(struct pcm186x_priv),GFP_KERNEL);
 	if(pcm186x==NULL)
 	{
 		return -ENOMEM;
@@ -256,13 +256,13 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 	dev_set_drvdata(&i2c->dev,pcm186x);
 	pcm186x->regmap = regmap;
 
-	return snd_soc_register_codec(&i2c->dev, &pcm186x_soc_codec_dev, &pcm186x_wab_dai, 1);
+	return snd_soc_register_codec(&i2c->dev, &pcm186x_soc_codec_dev, &pcm186x_dai, 1);
 
 }
 
 /*----------------------------------------------------------------------------------*/
 
-static int pcm186x_i2c_probe(struct i2c_client *i2c)
+static int pcm186x_i2c_remove(struct i2c_client *i2c)
 {
 	snd_soc_unregister_codec(&i2c->dev);
 	return 0;

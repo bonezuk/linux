@@ -74,11 +74,11 @@ static struct snd_soc_card hifiberry_adc = {
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_adc_dac_probe(struct platform_device *pdev)
+static int hifiberry_adc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	hifiberry_adc_dac.dev = &pdev->dev;
+	hifiberry_adc.dev = &pdev->dev;
 	
 	if(pdev->dev.of_node) 
 	{
@@ -120,7 +120,7 @@ MODULE_DEVICE_TABLE(of,hifiberry_adc_of_match);
 
 /*----------------------------------------------------------------------------------*/
 
-static struct platform_driver hifiberry_cc3200_dac_driver = {
+static struct platform_driver hifiberry_adc_driver = {
 	.driver = {
 	.name   = "snd-hifiberry-adc",
 	.owner  = THIS_MODULE,
