@@ -308,21 +308,33 @@ static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 
 static struct snd_soc_dai_driver pcm186x_dai = {
 	.name = "pcm186x-hifi",
+	.playback = {
+		.stream_name = "Playback"
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_44100,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE
+	},
 	.capture = {
-	.channels_min = 2,
-	.channels_max = 2,
-	.rates = SNDRV_PCM_RATE_44100,
-	.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE
-},
+		.stream_name = "Capture"
+		.channels_min = 2,
+		.channels_max = 2,
+		.rates = SNDRV_PCM_RATE_44100,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE
+	},
 	.ops = &pcm186x_dai_ops,
+	.symmetric_rates = 1
 };
 
-static struct snd_soc_codec_driver pcm186x_soc_codec_dev;
+static const struct snd_soc_codec_driver soc_codec_dev_pcm186x = {
+	.idle_bias_off = false,
+};
 
 /*----------------------------------------------------------------------------------*/
 
 static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
 {
+	int ret;
 	struct regmap *regmap;
 	struct pcm186x_priv *pcm186x;
 	struct regmap_config config = pcm186x_regmap;
@@ -348,7 +360,11 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 	dev_set_drvdata(&i2c->dev,pcm186x);
 	pcm186x->regmap = regmap;
 
-	return snd_soc_register_codec(&i2c->dev,&pcm186x_soc_codec_dev,&pcm186x_dai,1);
+	ret = snd_soc_register_codec(&i2c->dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
+	if (ret < 0) {
+		dev_err(dev, "Failed to register CODEC: %d\n", ret);
+	}
+	return ret;
 }
 
 /*----------------------------------------------------------------------------------*/
