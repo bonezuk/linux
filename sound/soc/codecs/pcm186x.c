@@ -309,14 +309,14 @@ static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 static struct snd_soc_dai_driver pcm186x_dai = {
 	.name = "pcm186x-hifi",
 	.playback = {
-		.stream_name = "Playback"
+		.stream_name = "Playback",
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_48000,
 		.formats = SNDRV_PCM_FMTBIT_S16_LE
 	},
 	.capture = {
-		.stream_name = "Capture"
+		.stream_name = "Capture",
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_48000,
@@ -362,7 +362,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 
 	ret = snd_soc_register_codec(&i2c->dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
 	if (ret < 0) {
-		dev_err(dev, "Failed to register CODEC: %d\n", ret);
+		dev_err(&i2c->dev, "Failed to register CODEC: %d\n", ret);
 	}
 	return ret;
 }
