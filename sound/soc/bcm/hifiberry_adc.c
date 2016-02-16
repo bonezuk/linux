@@ -35,7 +35,20 @@ static int hifiberry_adc_dac_init(struct snd_soc_pcm_runtime *rtd)
 static int hifiberry_adc_dac_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_codec *codec = rtd->codec;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	
+	/* Fix configuration to master SCK clock (24.576MHz), with */
+	snd_soc_update_bits(codec, 32, 0xff, 0x90);
+	snd_soc_update_bits(codec, 33, 0x7f, 0x01);
+	snd_soc_update_bits(codec, 34, 0x7f, 0x01);
+	snd_soc_update_bits(codec, 35, 0x7f, 0x03);
+	snd_soc_update_bits(codec, 37, 0x7f, 0x00);
+	snd_soc_update_bits(codec, 38, 0x7f, 0x0f);
+	snd_soc_update_bits(codec, 39, 0xff, 0x1f);
+	
+	snd_soc_update_bits(codec, 11, 0xff, 0xcc);
+	
 	return snd_soc_dai_set_bclk_ratio(cpu_dai,32*2);
 }
 
@@ -58,7 +71,7 @@ static struct snd_soc_dai_link hifiberry_adc_dai[] = {
 	.codec_dai_name	= "pcm186x-hifi",
 	.platform_name	= "bcm2708-i2s.0",
 	.codec_name	= "pcm186x.1-004a",
-	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS,
+	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM,
 	.ops		= &hifiberry_adc_dac_ops,
 	.init		= hifiberry_adc_dac_init,
 },
