@@ -16,6 +16,7 @@
 
 #include <linux/module.h>
 #include <linux/platform_device.h>
+#include <linux/gcd.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -31,6 +32,45 @@ static int hifiberry_adc_dac_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 /*----------------------------------------------------------------------------------*/
+
+static int pcm186x_set_pllclk_as_required(struct snd_soc_codec *codec,int pll_rate,int mclk_rate)
+{
+	int g,R,P,rate;
+	
+	g = (int)gcd((unsigned long)pll_rate,(unsigned long)mclk_rate);
+	R = pll_rate / g;
+	
+	if (R==1) 
+	{ 
+		/* Use PLL is not required */
+		rate = mclk_rate;
+		/* 1001 0000 */
+		snd_soc_update_bits(codec, 32, 0xff, 0x90);
+		/* ---- -- 0 0 */
+		snd_soc_update_bits(codec, 40, 0x03, 0x00);
+	}
+	else 
+	{
+		/* Use PLL */
+		P = mclk_rate / g;
+		/* 1001 1110 */
+		snd_soc_update_bits(codec, 32, 0xff, 0x9e);
+		
+		while (P > 16)
+		{
+			
+		}
+		
+		if (P<16)
+		{
+			
+		}
+		
+		/* ---- -- 0 1 */
+		snd_soc_update_bits(codec, 40, 0x03, 0x01);
+	}
+	return rate;
+}
 
 static int hifiberry_adc_dac_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
 {
@@ -49,7 +89,7 @@ static int hifiberry_adc_dac_hw_params(struct snd_pcm_substream *substream,struc
 	
 	snd_soc_update_bits(codec, 11, 0xff, 0xcc);
 	
-	return snd_soc_dai_set_bclk_ratio(cpu_dai,32*2);
+	return snd_soc_dai_set_bclk_ratio(cpu_dai,16*2);
 }
 
 /*----------------------------------------------------------------------------------*/
