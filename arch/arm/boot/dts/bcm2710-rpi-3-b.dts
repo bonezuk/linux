@@ -47,13 +47,13 @@
 	uart0_pins: uart0_pins {
 		brcm,pins = <32 33>;
 		brcm,function = <7>; /* alt3=UART0 */
-		brcm,pull = <0 0>;
+		brcm,pull = <0 2>;
 	};
 
 	uart1_pins: uart1_pins {
 		brcm,pins = <14 15>;
 		brcm,function = <2>; /* alt5=UART1 */
-		brcm,pull = <0 0>;
+		brcm,pull = <0 2>;
 	};
 };
 
@@ -182,5 +182,9 @@
 		audio = <&audio>,"status";
 		watchdog = <&watchdog>,"status";
 		random = <&random>,"status";
+		sd_overclock = <&sdhost>,"brcm,overclock-50:0";
+		sd_force_pio = <&sdhost>,"brcm,force-pio?";
+		sd_pio_limit = <&sdhost>,"brcm,pio-limit:0";
+		sd_debug     = <&sdhost>,"brcm,debug";
 	};
 };
