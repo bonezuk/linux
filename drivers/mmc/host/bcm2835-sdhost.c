@@ -239,8 +239,8 @@ static void log_init(void)
 	sdhost_log_buf = dma_zalloc_coherent(NULL, LOG_SIZE, &sdhost_log_addr,
 					     GFP_KERNEL);
 	if (sdhost_log_buf) {
-		pr_err("sdhost: log_buf @ %p (%x)\n",
-		       sdhost_log_buf, sdhost_log_addr);
+		pr_info("sdhost: log_buf @ %p (%x)\n",
+			sdhost_log_buf, sdhost_log_addr);
 		timer_base = ioremap_nocache(BCM2708_PERI_BASE + 0x3000, SZ_4K);
 		if (!timer_base)
 			pr_err("sdhost: failed to remap timer\n");
@@ -881,15 +881,14 @@ static void bcm2835_sdhost_prepare_data(struct bcm2835_host *host, struct mmc_co
 	host->flush_fifo = 0;
 	host->data->bytes_xfered = 0;
 
-
 	if (!host->dma_desc) {
 		/* Use PIO */
-		int flags;
+		int flags = SG_MITER_ATOMIC;
 
 		if (data->flags & MMC_DATA_READ)
-			flags = SG_MITER_TO_SG;
+			flags |= SG_MITER_TO_SG;
 		else
-			flags = SG_MITER_FROM_SG;
+			flags |= SG_MITER_FROM_SG;
 		sg_miter_start(&host->sg_miter, data->sg, data->sg_len, flags);
 		host->blocks = data->blocks;
 	}
