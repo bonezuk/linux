@@ -27,7 +27,7 @@
 #include <linux/pm.h>
 #include <linux/regmap.h>
 
-#include "pcm186.h"
+#include "pcm186x.h"
 
 /*----------------------------------------------------------------------------------*/
 
