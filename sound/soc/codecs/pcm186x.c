@@ -41,7 +41,7 @@ struct pcm186x_priv
 /*----------------------------------------------------------------------------------*/
 
 static const struct i2c_device_id pcm186x_i2c_id[] = {
-	{"pcm1863", 0},
+	{"pcm186x", 0},
 	{}
 };
 MODULE_DEVICE_TABLE(i2c,pcm186x_i2c_id);

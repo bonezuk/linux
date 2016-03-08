@@ -28,7 +28,7 @@
 			#size-cells = <0>;
 			status = "okay";
 
-			pcm1863@4a {
+			pcm186x@4a {
 				#sound-dai-cells = <0>;
 				compatible = "ti,pcm186x";
 				reg = <0x4a>;
