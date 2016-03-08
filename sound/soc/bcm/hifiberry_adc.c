@@ -49,15 +49,22 @@ static int hifiberry_ad_adc_hw_params(struct snd_pcm_substream *substream,struct
 	printk(KERN_INFO "hifiberry_ad_adc_hw_params\n");
 	
 	/* Fix configuration to master SCK clock (24.576MHz), with */
-	snd_soc_update_bits(codec, 32, 0xff, 0x90);
-	snd_soc_update_bits(codec, 33, 0x7f, 0x01);
-	snd_soc_update_bits(codec, 34, 0x7f, 0x01);
-	snd_soc_update_bits(codec, 35, 0x7f, 0x03);
-	snd_soc_update_bits(codec, 37, 0x7f, 0x00);
-	snd_soc_update_bits(codec, 38, 0x7f, 0x0f);
+	/* Use test clock algorithm to calculate commands for 44.1kHz at 16-bit using PPL */
+	snd_soc_update_bits(codec, 32, 0xff, 0xbe);
+	snd_soc_update_bits(codec, 40, 0x13, 0x01);
+	
+	snd_soc_update_bits(codec, 41, 0xff, 0x02);
+	snd_soc_update_bits(codec, 42, 0xff, 0x00);
+	snd_soc_update_bits(codec, 43, 0xff, 0x0b);
+	snd_soc_update_bits(codec, 44, 0xff, 0xfa);
+	snd_soc_update_bits(codec, 45, 0xff, 0x00);
+
+	snd_soc_update_bits(codec, 37, 0x7f, 0x07);
+	snd_soc_update_bits(codec, 38, 0x7f, 0x07);
+	snd_soc_update_bits(codec, 11, 0xff, 0xcc);
 	snd_soc_update_bits(codec, 39, 0xff, 0x1f);
 	
-	snd_soc_update_bits(codec, 11, 0xff, 0xcc);
+	snd_soc_update_bits(codec, 40, 0x13, 0x05);
 	
 	return snd_soc_dai_set_bclk_ratio(cpu_dai,16*2);
 }
