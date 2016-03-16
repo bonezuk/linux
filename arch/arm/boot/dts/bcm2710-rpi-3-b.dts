@@ -39,9 +39,9 @@
 	};
 
 	bt_pins: bt_pins {
-		brcm,pins =     <28 29 30 31 43>;
-		brcm,function = <6 6 6 6 4>;   /* alt2:PCM alt0:GPCLK2 */
-		brcm,pull =     <0 0 0 0 0>;
+		brcm,pins = <43>;
+		brcm,function = <4>; /* alt0:GPCLK2 */
+		brcm,pull = <0>;
 	};
 
 	uart0_pins: uart0_pins {
@@ -165,6 +165,7 @@
 	__overrides__ {
 		uart0 = <&uart0>,"status";
 		uart0_clkrate = <&clk_uart0>,"clock-frequency:0";
+		uart1 = <&uart1>,"status";
 		i2s = <&i2s>,"status";
 		spi = <&spi0>,"status";
 		i2c0 = <&i2c0>,"status";
