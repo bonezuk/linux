@@ -124,6 +124,9 @@ Params:
 
         uart0                   Set to "off" to disable uart0 (default "on")
 
+        uart1                   Set to "on" or "off" to enable or disable uart1
+                                (default varies)
+
         watchdog                Set to "on" to enable the hardware watchdog
                                 (default "off")
 
@@ -188,7 +191,7 @@ Load:   dtoverlay=at86rf233,<param>=<val>
 Params: interrupt               GPIO used for INT (default 23)
         reset                   GPIO used for Reset (default 24)
         sleep                   GPIO used for Sleep (default 25)
-        speed                   SPI bus speed in Hz (default 6000000)
+        speed                   SPI bus speed in Hz (default 3000000)
         trim                    Fine tuning of the internal capacitance
                                 arrays (0=+0pF, 15=+4.5pF, default 15)
 
@@ -350,6 +353,22 @@ Params: ds1307                  Select the DS1307 device
         pcf8563                 Select the PCF8563 device
 
 
+Name:   i2c0-bcm2708
+Info:   Enable the i2c_bcm2708 driver for the i2c0 bus
+Load:   dtoverlay=i2c0-bcm2708,<param>=<val>
+Params: sda0_pin                GPIO pin for SDA0 (0, 28 [or 44] - default 0)
+        scl0_pin                GPIO pin for SCL0 (1, 29 [or 45] - default 1)
+
+
+Name:   i2c1-bcm2708
+Info:   Enable the i2c_bcm2708 driver for the i2c1 bus
+Load:   dtoverlay=i2c1-bcm2708,<param>=<val>
+Params: sda1_pin                GPIO pin for SDA1 (2 or 44 - default 2)
+        scl1_pin                GPIO pin for SCL1 (3 or 45 - default 3)
+        pin_func                Alternative pin function (4 (alt0), 6 (alt2) -
+                                default 4)
+
+
 Name:   i2s-mmap
 Info:   Enables mmap support in the bcm2708-i2s driver
 Load:   dtoverlay=i2s-mmap
@@ -457,6 +476,24 @@ Params: speed                   Display SPI bus speed
 
 
 [ The pcf8563-rtc overlay has been deleted. See i2c-rtc. ]
+
+
+Name:   pi3-disable-bt
+Info:   Disable Pi3 Bluetooth and restore UART0/ttyAMA0 over GPIOs 14 & 15
+        N.B. To disable the systemd service that initialises the modem so it
+        doesn't use the UART, use 'sudo systemctl disable hciuart'.
+Load:   dtoverlay=pi3-disable-bt
+Params: <None>
+
+
+Name:   pi3-miniuart-bt
+Info:   Switch Pi3 Bluetooth function to use the mini-UART (ttyS0) and restore
+        UART0/ttyAMA0 over GPIOs 14 & 15. Note that this may reduce the maximum
+        usable baudrate.
+        N.B. It is also necessary to edit /lib/systemd/system/hciuart.server
+        and replace ttyAMA0 with ttyS0.
+Load:   dtoverlay=pi3-miniuart-bt
+Params: <None>
 
 
 Name:   piscreen
@@ -567,6 +604,14 @@ Params: pin                     Output pin (default 18) - see table
         clock                   PWM clock frequency (informational)
 
 
+Name:   qca7000
+Info:   I2SE's Evaluation Board for PLC Stamp micro
+Load:   dtoverlay=qca7000,<param>=<val>
+Params: int_pin                 GPIO pin for interrupt signal (default 23)
+
+        speed                   SPI bus speed (default 12 MHz)
+
+
 Name:   raspidac3
 Info:   Configures the RaspiDAV Rev.3x audio card
 Load:   dtoverlay=raspidac3
@@ -589,14 +634,11 @@ Name:   rpi-display
 Info:   RPi-Display - 2.8" Touch Display by Watterott
 Load:   dtoverlay=rpi-display,<param>=<val>
 Params: speed                   Display SPI bus speed
-
         rotate                  Display rotation {0,90,180,270}
-
         fps                     Delay between frame updates
-
         debug                   Debug output level {0-7}
-
         xohms                   Touchpanel sensitivity (X-plate resistance)
+        swapxy                  Swap x and y axis
 
 
 Name:   rpi-ft5406
@@ -652,6 +694,27 @@ Params: overclock_50            SD Clock (in MHz) to use when the MMC framework
                                 (default on: polling once at boot-time)
 
         bus_width               Set the SDIO host bus width (default 4 bits)
+
+
+Name:   sdio-1bit
+Info:   Selects the bcm2835-sdhost SD/MMC driver, optionally with overclock,
+        and enables 1-bit SDIO via GPIOs 22-25.
+Load:   dtoverlay=sdio-1bit,<param>=<val>
+Params: overclock_50            SD Clock (in MHz) to use when the MMC framework
+                                requests 50MHz
+
+        sdio_overclock          SDIO Clock (in MHz) to use when the MMC
+                                framework requests 50MHz
+
+        force_pio               Disable DMA support (default off)
+
+        pio_limit               Number of blocks above which to use DMA
+                                (default 1)
+
+        debug                   Enable debug output (default off)
+
+        poll_once               Disable SDIO-device polling every second
+                                (default on: polling once at boot-time)
 
 
 Name:   smi
@@ -765,6 +828,14 @@ Params: gpiopin                 GPIO for I/O (default "4")
                                 power (2-wire, power-on-data) feature
 
         extpullup               GPIO for external pullup (default "5")
+
+
+Name:   wittypi
+Info:   Configures the wittypi RTC module.
+Load:   dtoverlay=wittypi,<param>=<val>
+Params: led_gpio                GPIO for LED (default "17")
+        led_trigger             Choose which activity the LED tracks (default
+                                "default-on")
 
 
 Troubleshooting
