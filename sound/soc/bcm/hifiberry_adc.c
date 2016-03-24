@@ -32,6 +32,10 @@
 
 /*----------------------------------------------------------------------------------*/
 
+#define HIFIBERRY_ADC_MASTERCLOCK 24576000
+
+/*----------------------------------------------------------------------------------*/
+
 static int hifiberry_adc_init(struct snd_soc_pcm_runtime *rtd)
 {
 	return 0;
@@ -41,9 +45,13 @@ static int hifiberry_adc_init(struct snd_soc_pcm_runtime *rtd)
 
 static int hifiberry_adc_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
 {
+	int ret;
 	unsigned int sample_bits;
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+
+	ret = snd_soc_dai_set_sysclk(codec_dai,PCM186X_MASTER_CLK,HIFIBERRY_ADC_MASTERCLOCK,SND_SOC_CLOCK_OUT);
 
 	sample_bits = snd_pcm_format_physical_width(params_format(params));
 
