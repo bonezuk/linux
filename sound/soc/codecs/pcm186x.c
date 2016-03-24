@@ -27,104 +27,15 @@
 #include <linux/pm.h>
 #include <linux/regmap.h>
 
-#define PCM186x_VIRT_BASE 0x100
-#define PCM186x_PAGE_LEN  0x100
-#define PCM186x_PAGE_BASE(n)  (PCM186x_VIRT_BASE + (PCM186x_PAGE_LEN * n))
-
-#define PCM186x_PAGE              0
-
-/* Page 0 Registers */
-#define PCM186x_PGA_VAL_CH1_L                   (PCM186x_PAGE_BASE(0) +   1)
-#define PCM186x_PGA_VAL_CH1_R                   (PCM186x_PAGE_BASE(0) +   2)
-#define PCM186x_PGA_VAL_CH2_L                   (PCM186x_PAGE_BASE(0) +   3)
-#define PCM186x_PGA_VAL_CH2_R                   (PCM186x_PAGE_BASE(0) +   4)
-#define PCM186x_PGA_CLIP_CONTROL                (PCM186x_PAGE_BASE(0) +   5)
-#define PCM186x_ADC1_INPUT_SELECT_L             (PCM186x_PAGE_BASE(0) +   6)
-#define PCM186x_ADC1_INPUT_SELECT_R             (PCM186x_PAGE_BASE(0) +   7)
-#define PCM186x_ADC2_INPUT_SELECT_L             (PCM186x_PAGE_BASE(0) +   8)
-#define PCM186x_ADC2_INPUT_SELECT_R             (PCM186x_PAGE_BASE(0) +   9)
-#define PCM186x_ADC2_INPUT_CHANNEL              (PCM186x_PAGE_BASE(0) +  10)
-#define PCM186x_PCM_FORMAT                      (PCM186x_PAGE_BASE(0) +  11)
-#define PCM186x_TDM_SELECT                      (PCM186x_PAGE_BASE(0) +  12)
-#define PCM186x_TX_TDM_OFFSET                   (PCM186x_PAGE_BASE(0) +  13)
-#define PCM186x_RX_TDM_OFFSET                   (PCM186x_PAGE_BASE(0) +  14)
-#define PCM186x_DPGA_VAL_CH1_L                  (PCM186x_PAGE_BASE(0) +  15)
-#define PCM186x_GPIO_0_AND_1_CTRL               (PCM186x_PAGE_BASE(0) +  16)
-#define PCM186x_GPIO_2_AND_3_CTRL               (PCM186x_PAGE_BASE(0) +  17)
-#define PCM186x_GPIO_0_AND_1_DIR                (PCM186x_PAGE_BASE(0) +  18)
-#define PCM186x_GPIO_2_AND_3_DIR                (PCM186x_PAGE_BASE(0) +  19)
-#define PCM186x_GPIO_STATE                      (PCM186x_PAGE_BASE(0) +  20)
-#define PCM186x_GPIO_PULL_DOWN                  (PCM186x_PAGE_BASE(0) +  21)
-#define PCM186x_DPGA_VAL_CH1_R                  (PCM186x_PAGE_BASE(0) +  22)
-#define PCM186x_DPGA_VAL_CH2_L                  (PCM186x_PAGE_BASE(0) +  23)
-#define PCM186x_DPGA_VAL_CH2_R                  (PCM186x_PAGE_BASE(0) +  24)
-#define PCM186x_PGA_GAIN_MAP                    (PCM186x_PAGE_BASE(0) +  25)
-#define PCM186x_DIGMIC_INPUT                    (PCM186x_PAGE_BASE(0) +  26)
-#define PCM186x_DIN_RESAMPLE                    (PCM186x_PAGE_BASE(0) +  27)
-#define PCM186x_CLK_SELECT                      (PCM186x_PAGE_BASE(0) +  32)
-#define PCM186x_DSP1_CLK_DIVIDER                (PCM186x_PAGE_BASE(0) +  33)
-#define PCM186x_DSP2_CLK_DIVIDER                (PCM186x_PAGE_BASE(0) +  34)
-#define PCM186x_ADC_CLK_DIVIDER                 (PCM186x_PAGE_BASE(0) +  35)
-#define PCM186x_PLL_SCK_DIVIDER                 (PCM186x_PAGE_BASE(0) +  37)
-#define PCM186x_SCK_TO_BCK_DIVIDER              (PCM186x_PAGE_BASE(0) +  38)
-#define PCM186x_SCK_TO_LRCK_DIVIDER             (PCM186x_PAGE_BASE(0) +  39)
-#define PCM186x_PLL_STATUS                      (PCM186x_PAGE_BASE(0) +  40)
-#define PCM186x_PLL_P_DIVIDER                   (PCM186x_PAGE_BASE(0) +  41)
-#define PCM186x_PLL_R_DIVIDER                   (PCM186x_PAGE_BASE(0) +  42)
-#define PCM186x_PLL_J_DIVIDER                   (PCM186x_PAGE_BASE(0) +  43)
-#define PCM186x_PLL_D1_DIVIDER                  (PCM186x_PAGE_BASE(0) +  44)
-#define PCM186x_PLL_D2_DIVIDER                  (PCM186x_PAGE_BASE(0) +  45)
-#define PCM186x_SIGDET_CHANNELS                 (PCM186x_PAGE_BASE(0) +  48)
-#define PCM186x_SIGDET_INTR_MASK                (PCM186x_PAGE_BASE(0) +  49)
-#define PCM186x_SIGDET_STATUS                   (PCM186x_PAGE_BASE(0) +  50)
-#define PCM186x_SIGDET_LOSS_TIME                (PCM186x_PAGE_BASE(0) +  52)
-#define PCM186x_SIGDET_SCAN_TIME                (PCM186x_PAGE_BASE(0) +  53)
-#define PCM186x_SIGDET_INT_INTVL                (PCM186x_PAGE_BASE(0) +  54)
-#define PCM186x_SIGDET_DC_REF_CH1_L             (PCM186x_PAGE_BASE(0) +  64)
-#define PCM186x_SIGDET_DC_DIFF_CH1_L            (PCM186x_PAGE_BASE(0) +  65)
-#define PCM186x_SIGDET_DC_LEVEL_CH1_L           (PCM186x_PAGE_BASE(0) +  66)
-#define PCM186x_SIGDET_DC_REF_CH1_R             (PCM186x_PAGE_BASE(0) +  67)
-#define PCM186x_SIGDET_DC_DIFF_CH1_R            (PCM186x_PAGE_BASE(0) +  68)
-#define PCM186x_SIGDET_DC_LEVEL_CH1_R           (PCM186x_PAGE_BASE(0) +  69)
-#define PCM186x_SIGDET_DC_REF_CH2_L             (PCM186x_PAGE_BASE(0) +  70)
-#define PCM186x_SIGDET_DC_DIFF_CH2_L            (PCM186x_PAGE_BASE(0) +  71)
-#define PCM186x_SIGDET_DC_LEVEL_CH2_L           (PCM186x_PAGE_BASE(0) +  72)
-#define PCM186x_SIGDET_DC_REF_CH2_R             (PCM186x_PAGE_BASE(0) +  73)
-#define PCM186x_SIGDET_DC_DIFF_CH2_R            (PCM186x_PAGE_BASE(0) +  74)
-#define PCM186x_SIGDET_DC_LEVEL_CH2_R           (PCM186x_PAGE_BASE(0) +  75)
-#define PCM186x_SIGDET_DC_REF_CH3_L             (PCM186x_PAGE_BASE(0) +  76)
-#define PCM186x_SIGDET_DC_DIFF_CH3_L            (PCM186x_PAGE_BASE(0) +  77)
-#define PCM186x_SIGDET_DC_LEVEL_CH3_L           (PCM186x_PAGE_BASE(0) +  78)
-#define PCM186x_SIGDET_DC_REF_CH3_R             (PCM186x_PAGE_BASE(0) +  79)
-#define PCM186x_SIGDET_DC_DIFF_CH3_R            (PCM186x_PAGE_BASE(0) +  80)
-#define PCM186x_SIGDET_DC_LEVEL_CH3_R           (PCM186x_PAGE_BASE(0) +  81)
-#define PCM186x_SIGDET_DC_REF_CH4_L             (PCM186x_PAGE_BASE(0) +  82)
-#define PCM186x_SIGDET_DC_DIFF_CH4_L            (PCM186x_PAGE_BASE(0) +  83)
-#define PCM186x_SIGDET_DC_LEVEL_CH4_L           (PCM186x_PAGE_BASE(0) +  84)
-#define PCM186x_SIGDET_DC_REF_CH4_R             (PCM186x_PAGE_BASE(0) +  85)
-#define PCM186x_SIGDET_DC_DIFF_CH4_R            (PCM186x_PAGE_BASE(0) +  86)
-#define PCM186x_SIGDET_DC_LEVEL_CH4_R           (PCM186x_PAGE_BASE(0) +  87)
-#define PCM186x_AUXADC_DATA_CTRL                (PCM186x_PAGE_BASE(0) +  88)
-#define PCM186x_AUXADC_DATA_LSB                 (PCM186x_PAGE_BASE(0) +  89)
-#define PCM186x_AUXADC_DATA_MSB                 (PCM186x_PAGE_BASE(0) +  90)
-#define PCM186x_INTR_MASK                       (PCM186x_PAGE_BASE(0) +  96)
-#define PCM186x_INTR_STATUS                     (PCM186x_PAGE_BASE(0) +  97)
-#define PCM186x_INTR_PROPERTIES                 (PCM186x_PAGE_BASE(0) +  98)
-#define PCM186x_POWER_CTRL                      (PCM186x_PAGE_BASE(0) + 112)
-#define PCM186x_DSP_CTRL                        (PCM186x_PAGE_BASE(0) + 113)
-#define PCM186x_DEVICE_STATUS                   (PCM186x_PAGE_BASE(0) + 114)
-#define PCM186x_CURRENT_FREQUENCY               (PCM186x_PAGE_BASE(0) + 115)
-#define PCM186x_CURRENT_CLK_RATIO               (PCM186x_PAGE_BASE(0) + 116)
-#define PCM186x_CLK_STATUS                      (PCM186x_PAGE_BASE(0) + 117)
-#define PCM186x_DVDD_STATUS                     (PCM186x_PAGE_BASE(0) + 120)
-
-#define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 20)
+#include "pcm186x.h"
 
 /*----------------------------------------------------------------------------------*/
 
 struct pcm186x_priv
 {
 	struct regmap *regmap;
+	int mclk_rate;
+	int fmt;
 };
 
 /*----------------------------------------------------------------------------------*/
@@ -282,6 +193,268 @@ const struct regmap_config pcm186x_regmap = {
 };
 
 /*----------------------------------------------------------------------------------*/
+/* Derived from 9.13.5 - PCM1863/5 Manual PLL Calculation */
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_calc_pll_clk_out(int pllClkIn,int R,int J,int D,int P)
+{
+	s64 t = (s64)pllClkIn * (s64)((R * J * 10000) + D);
+	t = div64_s64(t,P * 10000);
+	return (int)t;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_is_pll_valid(int pllClkIn,int fSRef,int R,int J,int D,int P)
+{
+	int pllClkOut,inDiv;
+
+	if(!(R>=1 && R<=16))
+		return PCM186X_PLL_INVALID_R_OUT_OF_RANGE;
+	if(!(J>=1 && J<=63))
+		return PCM186X_PLL_INVALID_J_OUT_OF_RANGE;
+	if(!(D>=0 && D<=9999))
+		return PCM186X_PLL_INVALID_D_OUT_OF_RANGE;
+	if(!(P>=1 && P<=15))
+		return PCM186X_PLL_INVALID_P_OUT_OF_RANGE;
+
+	inDiv = pllClkIn / P;
+	if(inDiv > 20000000)
+		return PCM186X_PLL_INVALID_INPUTDIV_HIGH;
+
+	pllClkOut = pcm186x_calc_pll_clk_out(pllClkIn,R,J,D,P);
+	if(pllClkOut < 64000000)
+		return PCM186X_PLL_INVALID_OUTPUT_LOW;
+	else if(pllClkOut > PCM186X_PLL_MAX_FREQ)
+		return PCM186X_PLL_INVALID_OUTPUT_HIGH;
+
+	if(!D)
+	{
+		if(inDiv < 1000000)
+			return PCM186X_PLL_INVALID_INPUTDIV_LOW;
+	}
+	else
+	{
+		if(inDiv < 6667000)
+			return PCM186X_PLL_INVALID_INPUTDIV_LOW;
+		if(!(J>=4 && J<=11))
+			return PCM186X_PLL_INVALID_J_OUT_OF_RANGE;
+		if(R!=1)
+			return PCM186X_PLL_INVALID_R_OUT_OF_RANGE;
+	}
+	return PCM186X_PLL_VALID;
+}
+
+/*----------------------------------------------------------------------------------*/
+/* From looking at the PLL ratio (Table 10) */
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_pll_N_multipler(int fSRef)
+{
+	int m,N,O,diffN,diffO;
+
+	N = 2;
+	do
+	{
+		N <<= 1;
+		m = fSRef * N;
+	} while(m < PCM186X_PLL_MAX_FREQ);
+	N >>= 1;
+
+	O = 3;
+	do
+	{
+		O <<= 1;
+		m = fSRef * O;
+	} while(m < PCM186X_PLL_MAX_FREQ);
+	O >>= 1;
+
+	diffN = PCM186X_PLL_MAX_FREQ - (fSRef * N);
+	diffO = PCM186X_PLL_MAX_FREQ - (fSRef * O);
+
+	return (diffN < diffO) ? N : O;
+}
+
+/*----------------------------------------------------------------------------------*/
+/* As R=1 then it is implied implicitly */
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_pll_determine_fraction(u64 W,int *J,int P)
+{
+	int i,iM,j;
+	u64 Pv,Jv,Jt,W0,r,mult,diff,diffM;
+	const u64 oneFP = 0x0000000100000000ULL;
+	const u64 maxFP = 0xffffffffffffffffULL;
+
+	mult = oneFP;
+	Pv = (u64)(P);
+	Jv = (u64)(*J);
+
+	for(j=0;j<4;j++)
+	{
+		Jv *= 10;
+		mult /= 10;
+		for(i=-5,iM=-5,diffM=maxFP;i<=5;i++)
+		{
+			if(i<0 && !Jv)
+				continue;
+			Jt = (Jv + i) * mult;
+			W0 = div64_u64_rem(Jt,Pv,&r);
+			diff = (W > W0) ? W - W0 : W0 - W;
+			if(diff < diffM)
+			{
+				iM = i;
+				diffM = diff;
+			}
+		}
+		Jv += iM;
+	}
+	Jt = (u64)(*J) * 10000;
+	if(Jv > Jt)
+	{
+		Jv -= Jt;
+	}
+	else
+	{
+		Jv -= (Jt - 10000);
+		*J -= 1;
+	}
+	return (int)Jv;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_is_pll_required(int fSRef,int bitsPerSample,int mclk_rate)
+{
+	return !(mclk_rate % (fSRef * bitsPerSample));
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_set_bits_per_sample(struct snd_soc_codec *codec,int bitsPerSample)
+{
+	int ret = 0;
+
+	if(bitsPerSample==16)
+	{
+		snd_soc_update_bits(codec,11,0xcc,0xcc);
+		snd_soc_update_bits(codec,39,0x3f,31);
+	}
+	else if(bitsPerSample==24)
+	{
+		snd_soc_update_bits(codec,11,0xcc,0x44);
+		snd_soc_update_bits(codec,39,0x3f,47);
+	}
+	else
+	{
+		ret = -1;
+	}
+	return ret;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_calc_pll_fractional_rate(int fSRef,int mClkRate,int *J,int *P)
+{
+	int jCount,Js,Ds,Ps,D;
+	u64 W,Jt,W0,dW,dWMax;
+	const u64 maxFP = 0xffffffffffffffffULL;
+
+	D = -1;
+	W = div64_u64(((u64)(*J) << 32),(u64)(*P));
+	*J = -1;
+	dWMax = maxFP;
+
+	for(jCount = 4; jCount <= 11; jCount++)
+	{
+		Jt = div64_u64((u64)jCount << 33,W);
+		if(Jt & 1)
+		{
+			Jt += 2;
+		}
+		Jt >>= 1;
+
+		if(Jt>=1 && Jt<=15)
+		{
+			Js = jCount;
+			Ps = (int)Jt;
+			Ds = pcm186x_pll_determine_fraction(W,&Js,Ps);
+			W0 = div64_u64(((u64)(Js) << 32) | (u64)(Ds * (0xffffffff / 10000)),(u64)Ps);
+			dW = (W > W0) ? W - W0 : W0 - W;
+
+			if(dW < dWMax && !pcm186x_is_pll_valid(mClkRate,fSRef,1,Js,Ds,Ps))
+			{
+				*J = Js;
+				*P = Ps;
+				D = Ds;
+				dWMax = dW;
+			}
+		}
+	}
+	return D;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_setup_clocks(struct snd_soc_codec *codec,int fSRef,int bitsPerSample,int mClkRate)
+{
+	int g,R,J,D,P,N,pllClkOut,bitClkDiv,ret;
+
+	if(pcm186x_is_pll_required(fSRef,bitsPerSample,mClkRate))
+	{
+		// PLL is not required
+		snd_soc_update_bits(codec,32,0xff,0x91);
+		bitClkDiv = mClkRate / (fSRef * bitsPerSample * 2);
+		snd_soc_update_bits(codec,38,0x7f,(unsigned int)bitClkDiv-1);
+		snd_soc_update_bits(codec,40,0x03,0x00);
+		ret = pcm186x_set_bits_per_sample(codec,bitsPerSample);
+	}
+	else
+	{
+		// Use PLL
+		N = pcm186x_pll_N_multipler(fSRef);
+		pllClkOut = N * fSRef;
+
+		g = (int)gcd((unsigned long)pllClkOut,(unsigned long)mClkRate);
+		J = pllClkOut / g;
+		P = mClkRate / g;
+		R = 1;
+
+		if(P > 15)
+		{
+			D = pcm186x_calc_pll_fractional_rate(fSRef,mClkRate,&J,&P);
+			ret = (D >= 0) ? 0 : -1;
+		}
+		else
+		{
+			D = 0;
+			ret = pcm186x_is_pll_valid(mClkRate,fSRef,R,J,D,P);
+		}
+
+		if(!ret)
+		{
+			bitClkDiv = pllClkOut / (fSRef * bitsPerSample * 16);
+			snd_soc_update_bits(codec,32,0xff,0xbe);
+			snd_soc_update_bits(codec,40,0x03,0x01);
+			snd_soc_update_bits(codec,41,0x7f,(unsigned int)P-1);
+			snd_soc_update_bits(codec,42,0x0f,(unsigned int)R-1);
+			snd_soc_update_bits(codec,43,0x3f,(unsigned int)J);
+			snd_soc_update_bits(codec,44,0xff,(unsigned int)D & 0x000000ff);
+			snd_soc_update_bits(codec,45,0x3f,(unsigned int)(D >> 8) & 0x0000003f);
+			snd_soc_update_bits(codec,37,0x7f,0x07);
+			snd_soc_update_bits(codec,38,0x7f,(unsigned int)bitClkDiv-1);
+			ret = pcm186x_set_bits_per_sample(codec,bitsPerSample);
+			snd_soc_update_bits(codec,40,0x03,0x05);
+		}
+		else
+		{
+			ret = -1;
+		}
+	}
+	return ret;
+}
+
+/*----------------------------------------------------------------------------------*/
 
 static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
@@ -290,12 +463,39 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 
 static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
-	return 0;
+	int res;
+	int bitsPerSample;
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	bitsPerSample = snd_pcm_format_physical_width(params_format(params));
+	return pcm186x_setup_clocks(substream,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
 }
 
 static int pcm186x_set_fmt(struct snd_soc_dai *dai,unsigned int fmt)
 {
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	pcm186x->fmt = fmt;
 	return 0;
+}
+
+static int pcm186x_set_sysclk(struct snd_soc_dai *dai,int clk_id, unsigned int freq, int dir)
+{
+	int res;
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	if(clk_id == PCM186X_MASTER_CLK)
+	{
+		pcm186x->mclk_rate = freq;
+		res = 0;
+	}
+	else
+	{
+		res = 1;
+	}
+	return res;
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -304,23 +504,37 @@ static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 	.startup = pcm186x_dai_startup,
 	.hw_params = pcm186x_hw_params,
 	.set_fmt = pcm186x_set_fmt,
+	.set_sysclk = pcm186x_set_sysclk,
 };
+
+/*----------------------------------------------------------------------------------*/
+
+#define PCM186X_RATES (
+	SNDRV_PCM_RATE_8000 | 
+	SNDRV_PCM_RATE_16000 |
+	SNDRV_PCM_RATE_32000 |
+	SNDRV_PCM_RATE_44100 |
+	SNDRV_PCM_RATE_48000 |
+	SNDRV_PCM_RATE_64000 |
+	SNDRV_PCM_RATE_88200 |
+	SNDRV_PCM_RATE_96000 |
+	SNDRV_PCM_RATE_176400 |
+	SNDRV_PCM_RATE_192000
+)
+
+#define PCM186X_FORMATS (
+	SNDRV_PCM_FMTBIT_S16_LE | 
+	SNDRV_PCM_FMTBIT_S24_LE
+)
 
 static struct snd_soc_dai_driver pcm186x_dai = {
 	.name = "pcm186x-hifi",
-	.playback = {
-		.stream_name = "Playback",
-		.channels_min = 2,
-		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE
-	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 2,
 		.channels_max = 2,
-		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE
+		.rates = PCM186X_RATES,
+		.formats = PCM186X_FORMATS,
 	},
 	.ops = &pcm186x_dai_ops,
 	.symmetric_rates = 1
