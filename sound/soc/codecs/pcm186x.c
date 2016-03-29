@@ -17,6 +17,7 @@
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
+#include <linux/gcd.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -293,7 +294,7 @@ static int pcm186x_pll_determine_fraction(u64 W,int *J,int P)
 	for(j=0;j<4;j++)
 	{
 		Jv *= 10;
-		mult /= 10;
+		mult = div_u64(mult,10);
 		for(i=-5,iM=-5,diffM=maxFP;i<=5;i++)
 		{
 			if(i<0 && !Jv)
@@ -463,13 +464,12 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 
 static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
-	int res;
 	int bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
 	bitsPerSample = snd_pcm_format_physical_width(params_format(params));
-	return pcm186x_setup_clocks(substream,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
+	return pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
 }
 
 static int pcm186x_set_fmt(struct snd_soc_dai *dai,unsigned int fmt)
@@ -509,22 +509,22 @@ static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 
 /*----------------------------------------------------------------------------------*/
 
-#define PCM186X_RATES (
-	SNDRV_PCM_RATE_8000 | 
-	SNDRV_PCM_RATE_16000 |
-	SNDRV_PCM_RATE_32000 |
-	SNDRV_PCM_RATE_44100 |
-	SNDRV_PCM_RATE_48000 |
-	SNDRV_PCM_RATE_64000 |
-	SNDRV_PCM_RATE_88200 |
-	SNDRV_PCM_RATE_96000 |
-	SNDRV_PCM_RATE_176400 |
-	SNDRV_PCM_RATE_192000
+#define PCM186X_RATES ( \
+	SNDRV_PCM_RATE_8000 | \
+	SNDRV_PCM_RATE_16000 | \
+	SNDRV_PCM_RATE_32000 | \
+	SNDRV_PCM_RATE_44100 | \
+	SNDRV_PCM_RATE_48000 | \
+	SNDRV_PCM_RATE_64000 | \
+	SNDRV_PCM_RATE_88200 | \
+	SNDRV_PCM_RATE_96000 | \
+	SNDRV_PCM_RATE_176400 | \
+	SNDRV_PCM_RATE_192000 \
 )
 
-#define PCM186X_FORMATS (
-	SNDRV_PCM_FMTBIT_S16_LE | 
-	SNDRV_PCM_FMTBIT_S24_LE
+#define PCM186X_FORMATS ( \
+	SNDRV_PCM_FMTBIT_S16_LE | \
+	SNDRV_PCM_FMTBIT_S24_LE \
 )
 
 static struct snd_soc_dai_driver pcm186x_dai = {
