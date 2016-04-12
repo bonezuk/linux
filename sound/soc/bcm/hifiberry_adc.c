@@ -36,14 +36,14 @@
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_adc_init(struct snd_soc_pcm_runtime *rtd)
+static int snd_rpi_hifiberry_adc_init(struct snd_soc_pcm_runtime *rtd)
 {
 	return 0;
 }
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_adc_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
+static int snd_rpi_hifiberry_adc_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params)
 {
 	int ret;
 	unsigned int sample_bits;
@@ -55,54 +55,69 @@ static int hifiberry_adc_hw_params(struct snd_pcm_substream *substream,struct sn
 
 	sample_bits = snd_pcm_format_physical_width(params_format(params));
 
-	return snd_soc_dai_set_bclk_ratio(cpu_dai, sample_bits * 2);
+	return snd_soc_dai_set_bclk_ratio(cpu_dai,sample_bits * 2);
 }
+
+/*----------------------------------------------------------------------------------*/
+
+static int snd_rpi_hifiberry_adc_startup(struct snd_pcm_substream *substream)
+{
+	return 0;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static void snd_rpi_hifiberry_adc_shutdown(struct snd_pcm_substream *substream)
+{}
 
 /*----------------------------------------------------------------------------------*/
 /* machine stream operations */
 /*----------------------------------------------------------------------------------*/
 
-static struct snd_soc_ops hifiberry_adc_ops = 
+static struct snd_soc_ops snd_rpi_hifiberry_adc_ops = 
 {
-	.hw_params = hifiberry_adc_hw_params,
+	.hw_params = snd_rpi_hifiberry_adc_hw_params,
+	.startup = snd_rpi_hifiberry_adc_startup,
+	.shutdown = snd_rpi_hifiberry_adc_shutdown,
 };
 
 /*----------------------------------------------------------------------------------*/
 
-static struct snd_soc_dai_link hifiberry_adc_dai[] = {
-	{
-		.name		= "HiFiBerry ADC PCM186x",
-		.stream_name	= "HiFiBerry ADC HiFi",
-		.cpu_dai_name	= "bcm2708-i2s.0",
-		.codec_dai_name	= "pcm186x-hifi",
-		.platform_name	= "bcm2708-i2s.0",
-		.codec_name	= "pcm186x.1-004a",
-		.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM,
-		.ops		= &hifiberry_adc_ops,
-		.init		= hifiberry_adc_init,
-	},
+static struct snd_soc_dai_link snd_rpi_hifiberry_adc_dai[] = {
+{
+	.name		= "HiFiBerry ADC",
+	.stream_name	= "HiFiBerry ADC HiFi",
+	.cpu_dai_name	= "bcm2708-i2s.0",
+	.codec_dai_name	= "pcm186x-hifi",
+	.platform_name	= "bcm2708-i2s.0",
+	.codec_name	= "pcm186x.1-004a",
+	.dai_fmt	= SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBM_CFM,
+	.ops		= &snd_rpi_hifiberry_adc_ops,
+	.init		= snd_rpi_hifiberry_adc_init,
+},
 };
 
 /*----------------------------------------------------------------------------------*/
 
-static struct snd_soc_card hifiberry_adc = {
-	.name         = "hifiberry_adc",
-	.dai_link     = hifiberry_adc_dai,
-	.num_links    = ARRAY_SIZE(hifiberry_adc_dai),
+static struct snd_soc_card snd_rpi_hifiberry_adc = {
+	.name         = "snd_rpi_hifiberry_adc",
+	.owner        = THIS_MODULE,
+	.dai_link     = snd_rpi_hifiberry_adc_dai,
+	.num_links    = ARRAY_SIZE(snd_rpi_hifiberry_adc_dai),
 };
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_adc_probe(struct platform_device *pdev)
+static int snd_rpi_hifiberry_adc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	hifiberry_adc.dev = &pdev->dev;
+	snd_rpi_hifiberry_adc.dev = &pdev->dev;
 	
 	if(pdev->dev.of_node) 
 	{
 		struct device_node *i2s_node;
-		struct snd_soc_dai_link *dai = &hifiberry_adc_dai[0];
+		struct snd_soc_dai_link *dai = &snd_rpi_hifiberry_adc_dai[0];
 		i2s_node = of_parse_phandle(pdev->dev.of_node,"i2s-controller",0);
 
 		if(i2s_node) 
@@ -114,7 +129,7 @@ static int hifiberry_adc_probe(struct platform_device *pdev)
 		}
 	}
 	
-	ret = snd_soc_register_card(&hifiberry_adc);
+	ret = snd_soc_register_card(&snd_rpi_hifiberry_adc);
 	if(ret)
 	{
 		dev_err(&pdev->dev,"snd_soc_register_card() failed: %d\n",ret);
@@ -124,34 +139,34 @@ static int hifiberry_adc_probe(struct platform_device *pdev)
 
 /*----------------------------------------------------------------------------------*/
 
-static int hifiberry_adc_remove(struct platform_device *pdev)
+static int snd_rpi_hifiberry_adc_remove(struct platform_device *pdev)
 {
-	return snd_soc_unregister_card(&hifiberry_adc);
+	return snd_soc_unregister_card(&snd_rpi_hifiberry_adc);
 }
 
 /*----------------------------------------------------------------------------------*/
 
-static const struct of_device_id hifiberry_adc_of_match[] = {
-	{.compatible = "hifiberry_adc",},
-	{},
+static const struct of_device_id snd_rpi_hifiberry_adc_of_match[] = {
+	{.compatible = "hifiberry,hifiberry-adc",},
+{},
 };
-MODULE_DEVICE_TABLE(of,hifiberry_adc_of_match);
+MODULE_DEVICE_TABLE(of,snd_rpi_hifiberry_adc_of_match);
 
 /*----------------------------------------------------------------------------------*/
 
-static struct platform_driver hifiberry_adc_driver = {
+static struct platform_driver snd_rpi_hifiberry_adc_driver = {
 	.driver = {
-		.name   = "snd-hifiberry-adc",
-		.owner  = THIS_MODULE,
-		.of_match_table = hifiberry_adc_of_match,
-	},
-	.probe          = hifiberry_adc_probe,
-	.remove         = hifiberry_adc_remove,
+	.name   = "snd-rpi-hifiberry-adc",
+	.owner  = THIS_MODULE,
+	.of_match_table = snd_rpi_hifiberry_adc_of_match,
+},
+	.probe          = snd_rpi_hifiberry_adc_probe,
+	.remove         = snd_rpi_hifiberry_adc_remove,
 };
 
 /*----------------------------------------------------------------------------------*/
 
-module_platform_driver(hifiberry_adc_driver);
+module_platform_driver(snd_rpi_hifiberry_adc_driver);
 
 MODULE_DESCRIPTION("HiFiBerry ADC Driver");
 MODULE_AUTHOR("Stuart MacLean <stuart@hifiberry.com>");
