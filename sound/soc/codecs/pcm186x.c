@@ -459,32 +459,60 @@ static int pcm186x_setup_clocks(struct snd_soc_codec *codec,int fSRef,int bitsPe
 
 static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
+	struct snd_soc_codec *codec = dai->codec;
+	
+	printk(KERN_INFO "pcm186x_dai_startup\n");
+	
 	return 0;
 }
 
+/*----------------------------------------------------------------------------------*/
+
+static void pcm186x_dai_shutdown(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+{
+	printk(KERN_INFO "pcm186x_dai_shutdown\n");
+}
+
+/*----------------------------------------------------------------------------------*/
+
 static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
-	int bitsPerSample;
+	int res,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
+	printk(KERN_INFO "pcm186x_hw_params\n");
+	
 	bitsPerSample = snd_pcm_format_physical_width(params_format(params));
-	return pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
+	res = pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
+	if(!res)
+		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
+		
+	return 
 }
+
+/*----------------------------------------------------------------------------------*/
 
 static int pcm186x_set_fmt(struct snd_soc_dai *dai,unsigned int fmt)
 {
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	printk(KERN_INFO "pcm186x_set_fmt\n");
+	
 	pcm186x->fmt = fmt;
 	return 0;
 }
+
+/*----------------------------------------------------------------------------------*/
 
 static int pcm186x_set_sysclk(struct snd_soc_dai *dai,int clk_id, unsigned int freq, int dir)
 {
 	int res;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	printk(KERN_INFO "pcm186x_set_sysclk\n");
 	
 	if(clk_id == PCM186X_MASTER_CLK)
 	{
@@ -493,6 +521,7 @@ static int pcm186x_set_sysclk(struct snd_soc_dai *dai,int clk_id, unsigned int f
 	}
 	else
 	{
+		printk(KERN_ERR "pcm186x: Unknown clock id\n");
 		res = 1;
 	}
 	return res;
@@ -502,6 +531,7 @@ static int pcm186x_set_sysclk(struct snd_soc_dai *dai,int clk_id, unsigned int f
 
 static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 	.startup = pcm186x_dai_startup,
+	.shutdown = pcm186x_dai_shutdown,
 	.hw_params = pcm186x_hw_params,
 	.set_fmt = pcm186x_set_fmt,
 	.set_sysclk = pcm186x_set_sysclk,

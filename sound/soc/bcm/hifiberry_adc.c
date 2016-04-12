@@ -38,6 +38,7 @@
 
 static int snd_rpi_hifiberry_adc_init(struct snd_soc_pcm_runtime *rtd)
 {
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_init\n");
 	return 0;
 }
 
@@ -51,6 +52,8 @@ static int snd_rpi_hifiberry_adc_hw_params(struct snd_pcm_substream *substream,s
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_hw_params\n");
+
 	ret = snd_soc_dai_set_sysclk(codec_dai,PCM186X_MASTER_CLK,HIFIBERRY_ADC_MASTERCLOCK,SND_SOC_CLOCK_OUT);
 
 	sample_bits = snd_pcm_format_physical_width(params_format(params));
@@ -62,13 +65,16 @@ static int snd_rpi_hifiberry_adc_hw_params(struct snd_pcm_substream *substream,s
 
 static int snd_rpi_hifiberry_adc_startup(struct snd_pcm_substream *substream)
 {
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_startup\n");
 	return 0;
 }
 
 /*----------------------------------------------------------------------------------*/
 
 static void snd_rpi_hifiberry_adc_shutdown(struct snd_pcm_substream *substream)
-{}
+{
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_shutdown\n");
+}
 
 /*----------------------------------------------------------------------------------*/
 /* machine stream operations */
@@ -112,6 +118,8 @@ static int snd_rpi_hifiberry_adc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_probe\n");
+
 	snd_rpi_hifiberry_adc.dev = &pdev->dev;
 	
 	if(pdev->dev.of_node) 
@@ -141,6 +149,7 @@ static int snd_rpi_hifiberry_adc_probe(struct platform_device *pdev)
 
 static int snd_rpi_hifiberry_adc_remove(struct platform_device *pdev)
 {
+	printk(KERN_INFO "snd_rpi_hifiberry_adc_remove\n");
 	return snd_soc_unregister_card(&snd_rpi_hifiberry_adc);
 }
 
@@ -148,7 +157,7 @@ static int snd_rpi_hifiberry_adc_remove(struct platform_device *pdev)
 
 static const struct of_device_id snd_rpi_hifiberry_adc_of_match[] = {
 	{.compatible = "hifiberry,hifiberry-adc",},
-{},
+	{},
 };
 MODULE_DEVICE_TABLE(of,snd_rpi_hifiberry_adc_of_match);
 
@@ -156,10 +165,10 @@ MODULE_DEVICE_TABLE(of,snd_rpi_hifiberry_adc_of_match);
 
 static struct platform_driver snd_rpi_hifiberry_adc_driver = {
 	.driver = {
-	.name   = "snd-rpi-hifiberry-adc",
-	.owner  = THIS_MODULE,
-	.of_match_table = snd_rpi_hifiberry_adc_of_match,
-},
+		.name   = "snd-rpi-hifiberry-adc",
+		.owner  = THIS_MODULE,
+		.of_match_table = snd_rpi_hifiberry_adc_of_match,
+	},
 	.probe          = snd_rpi_hifiberry_adc_probe,
 	.remove         = snd_rpi_hifiberry_adc_remove,
 };
