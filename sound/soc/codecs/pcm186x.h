@@ -22,7 +22,7 @@
 
 #define PCM186x_VIRT_BASE 0x100
 #define PCM186x_PAGE_LEN  0x100
-#define PCM186x_PAGE_BASE(n)  (PCM186x_VIRT_BASE + (PCM186x_PAGE_LEN * n))
+#define PCM186x_PAGE_BASE(n)  (PCM186x_PAGE_LEN * n)
 
 #define PCM186x_PAGE              0
 
@@ -113,7 +113,6 @@
 
 #define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 20)
 
-
 #define PCM186X_PLL_VALID                   0
 #define PCM186X_PLL_INVALID_INPUTDIV_LOW   -1
 #define PCM186X_PLL_INVALID_INPUTDIV_HIGH  -2
@@ -127,5 +126,7 @@
 #define PCM186X_PLL_MAX_FREQ 100000000
 
 #define PCM186X_MASTER_CLK 1
+
+#define 
 
 #endif

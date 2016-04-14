@@ -37,6 +37,7 @@ struct pcm186x_priv
 	struct regmap *regmap;
 	int mclk_rate;
 	int fmt;
+	int powered;
 };
 
 /*----------------------------------------------------------------------------------*/
@@ -338,13 +339,13 @@ static int pcm186x_set_bits_per_sample(struct snd_soc_codec *codec,int bitsPerSa
 
 	if(bitsPerSample==16)
 	{
-		snd_soc_update_bits(codec,11,0xcc,0xcc);
-		snd_soc_update_bits(codec,39,0x3f,31);
+		snd_soc_update_bits(codec,PCM186x_PCM_FORMAT,0xcc,0xcc);
+		snd_soc_update_bits(codec,PCM186x_SCK_TO_LRCK_DIVIDER,0x3f,31);
 	}
 	else if(bitsPerSample==24)
 	{
-		snd_soc_update_bits(codec,11,0xcc,0x44);
-		snd_soc_update_bits(codec,39,0x3f,47);
+		snd_soc_update_bits(codec,PCM186x_PCM_FORMAT,0xcc,0x44);
+		snd_soc_update_bits(codec,PCM186x_SCK_TO_LRCK_DIVIDER,0x3f,47);
 	}
 	else
 	{
@@ -404,10 +405,10 @@ static int pcm186x_setup_clocks(struct snd_soc_codec *codec,int fSRef,int bitsPe
 	if(pcm186x_is_pll_required(fSRef,bitsPerSample,mClkRate))
 	{
 		// PLL is not required
-		snd_soc_update_bits(codec,32,0xff,0x91);
+		snd_soc_update_bits(codec,PCM186x_CLK_SELECT,0xff,0x91);
 		bitClkDiv = mClkRate / (fSRef * bitsPerSample * 2);
-		snd_soc_update_bits(codec,38,0x7f,(unsigned int)bitClkDiv-1);
-		snd_soc_update_bits(codec,40,0x03,0x00);
+		snd_soc_update_bits(codec,PCM186x_SCK_TO_BCK_DIVIDER,0x7f,(unsigned int)bitClkDiv-1);
+		snd_soc_update_bits(codec,PCM186x_PLL_STATUS,0x03,0x00);
 		ret = pcm186x_set_bits_per_sample(codec,bitsPerSample);
 	}
 	else
@@ -435,17 +436,17 @@ static int pcm186x_setup_clocks(struct snd_soc_codec *codec,int fSRef,int bitsPe
 		if(!ret)
 		{
 			bitClkDiv = pllClkOut / (fSRef * bitsPerSample * 16);
-			snd_soc_update_bits(codec,32,0xff,0xbe);
-			snd_soc_update_bits(codec,40,0x03,0x01);
-			snd_soc_update_bits(codec,41,0x7f,(unsigned int)P-1);
-			snd_soc_update_bits(codec,42,0x0f,(unsigned int)R-1);
-			snd_soc_update_bits(codec,43,0x3f,(unsigned int)J);
-			snd_soc_update_bits(codec,44,0xff,(unsigned int)D & 0x000000ff);
-			snd_soc_update_bits(codec,45,0x3f,(unsigned int)(D >> 8) & 0x0000003f);
-			snd_soc_update_bits(codec,37,0x7f,0x07);
-			snd_soc_update_bits(codec,38,0x7f,(unsigned int)bitClkDiv-1);
+			snd_soc_update_bits(codec,PCM186x_CLK_SELECT,0xff,0xbe);
+			snd_soc_update_bits(codec,PCM186x_PLL_STATUS,0x03,0x01);
+			snd_soc_update_bits(codec,PCM186x_PLL_P_DIVIDER,0x7f,(unsigned int)P-1);
+			snd_soc_update_bits(codec,PCM186x_PLL_R_DIVIDER,0x0f,(unsigned int)R-1);
+			snd_soc_update_bits(codec,PCM186x_PLL_J_DIVIDER,0x3f,(unsigned int)J);
+			snd_soc_update_bits(codec,PCM186x_PLL_D1_DIVIDER,0xff,(unsigned int)D & 0x000000ff);
+			snd_soc_update_bits(codec,PCM186x_PLL_D2_DIVIDER,0x3f,(unsigned int)(D >> 8) & 0x0000003f);
+			snd_soc_update_bits(codec,PCM186x_PLL_SCK_DIVIDER,0x7f,0x07);
+			snd_soc_update_bits(codec,PCM186x_SCK_TO_BCK_DIVIDER,0x7f,(unsigned int)bitClkDiv-1);
 			ret = pcm186x_set_bits_per_sample(codec,bitsPerSample);
-			snd_soc_update_bits(codec,40,0x03,0x05);
+			snd_soc_update_bits(codec,PCM186x_PLL_STATUS,0x03,0x05);
 		}
 		else
 		{
@@ -457,13 +458,40 @@ static int pcm186x_setup_clocks(struct snd_soc_codec *codec,int fSRef,int bitsPe
 
 /*----------------------------------------------------------------------------------*/
 
+static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
+{
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	if(pcm186x->powered && !turnon)
+	{
+		snd_soc_update_bits(codec,PCM186x_POWER_CTRL,0x04,0x04);
+		pcm186x->powered = 0;
+	}
+	else if(!pcm186x->powered && turnon)
+	{
+		snd_soc_update_bits(codec,PCM186x_POWER_CTRL,0x04,0x00);
+		pcm186x->powered = 1;
+	}
+}
+
+/*----------------------------------------------------------------------------------*/
+
 static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
+	int res,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
+	struct snd_pcm_runtime *runtime = substream->runtime;
 	
 	printk(KERN_INFO "pcm186x_dai_startup\n");
 	
-	return 0;
+	pcm186x_power_device(codec,1);
+	
+	bitsPerSample = snd_pcm_format_physical_width(runtime->format);
+	res = pcm186x_setup_clocks(codec,params_rate(runtime->rate),bitsPerSample,pcm186x->mclk_rate);
+	if(res)
+		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
+	
+	return res;
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -471,6 +499,7 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 static void pcm186x_dai_shutdown(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
 	printk(KERN_INFO "pcm186x_dai_shutdown\n");
+	pcm186x_power_device(codec,0);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -603,6 +632,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 	
 	dev_set_drvdata(&i2c->dev,pcm186x);
 	pcm186x->regmap = regmap;
+	pcm186x->powered = 0;
 
 	ret = snd_soc_register_codec(&i2c->dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
 	if (ret < 0) {
