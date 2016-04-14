@@ -481,13 +481,14 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 	int res,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-	
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+
 	printk(KERN_INFO "pcm186x_dai_startup\n");
 	
 	pcm186x_power_device(codec,1);
 	
 	bitsPerSample = snd_pcm_format_physical_width(runtime->format);
-	res = pcm186x_setup_clocks(codec,params_rate(runtime->rate),bitsPerSample,pcm186x->mclk_rate);
+	res = pcm186x_setup_clocks(codec,runtime->rate,bitsPerSample,pcm186x->mclk_rate);
 	if(res)
 		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
 	
@@ -499,7 +500,7 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 static void pcm186x_dai_shutdown(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
 	printk(KERN_INFO "pcm186x_dai_shutdown\n");
-	pcm186x_power_device(codec,0);
+	pcm186x_power_device(dai->codec,0);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -517,7 +518,7 @@ static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_
 	if(!res)
 		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
 		
-	return 
+	return res;
 }
 
 /*----------------------------------------------------------------------------------*/

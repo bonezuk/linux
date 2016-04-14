@@ -127,6 +127,4 @@
 
 #define PCM186X_MASTER_CLK 1
 
-#define 
-
 #endif
