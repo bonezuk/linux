@@ -30,6 +30,9 @@
 
 #include "pcm186x.h"
 
+/* Default based on PCM186x EVM board clock */
+#define PCM186x_ADC_MASTERCLOCK_DEFAULT 24576000
+
 /*----------------------------------------------------------------------------------*/
 
 struct pcm186x_priv
@@ -478,7 +481,7 @@ static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
 
 static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
-	int res,bitsPerSample;
+	int res,rate,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
@@ -488,7 +491,17 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 	pcm186x_power_device(codec,1);
 	
 	bitsPerSample = snd_pcm_format_physical_width(runtime->format);
-	res = pcm186x_setup_clocks(codec,runtime->rate,bitsPerSample,pcm186x->mclk_rate);
+	if(bitsPerSample < 16)
+	{
+		bitsPerSample = 16;
+	}
+	rate = runtime->rate;
+	if(!rate)
+	{
+		rate = 48000;
+	}
+	
+	res = pcm186x_setup_clocks(codec,rate,bitsPerSample,pcm186x->mclk_rate);
 	if(res)
 		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
 	
@@ -633,6 +646,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 	
 	dev_set_drvdata(&i2c->dev,pcm186x);
 	pcm186x->regmap = regmap;
+	pcm186x->mclk_rate = PCM186x_ADC_MASTERCLOCK_DEFAULT;
 	pcm186x->powered = 0;
 
 	ret = snd_soc_register_codec(&i2c->dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
