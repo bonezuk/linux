@@ -6,6 +6,17 @@
 	compatible = "brcm,bcm2708";
 
 	fragment@0 {
+		target-path = "/clocks";
+		__overlay__ {
+			adc_osc: adc_osc {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency = <24576000>;
+			};
+		};
+	};
+	
+	fragment@1 {
 		target = <&sound>;
 		__overlay__ {
 			compatible = "hifiberry,hifiberry-adc";
@@ -14,14 +25,14 @@
 		};
 	};
 
-	fragment@1 {
+	fragment@2 {
 		target = <&i2s>;
 		__overlay__ {
 			status = "okay";
 		};
 	};
 
-	fragment@2 {
+	fragment@3 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -32,6 +43,7 @@
 				#sound-dai-cells = <0>;
 				compatible = "ti,pcm186x";
 				reg = <0x4a>;
+				clocks = <&adc_osc>;
 				status = "okay";
 			};
 		};

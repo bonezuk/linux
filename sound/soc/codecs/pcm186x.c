@@ -38,7 +38,7 @@
 struct pcm186x_priv
 {
 	struct regmap *regmap;
-	int mclk_rate;
+	struct clk *sclk;
 	int fmt;
 	int powered;
 };
@@ -479,14 +479,21 @@ static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
 
 /*----------------------------------------------------------------------------------*/
 
-static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+static int pcm186x_dai_master_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
 	int res,rate,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	struct device *dev = dai->dev;
 
-	printk(KERN_INFO "pcm186x_dai_startup\n");
+	printk(KERN_INFO "pcm186x_dai_master_startup\n");
+
+	if(IS_ERR(pcm186x->sclk))
+	{
+		dev_err(dev, "Need SCLK for master mode: %ld\n", PTR_ERR(pcm186x->sclk));
+		return PTR_ERR(pcm186x->sclk);
+	}
 	
 	pcm186x_power_device(codec,1);
 	
@@ -503,8 +510,46 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 	
 	res = pcm186x_setup_clocks(codec,rate,bitsPerSample,pcm186x->mclk_rate);
 	if(res)
-		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
+	{
+		dev_err(dev, "Error setting up PCM186x DSP clock %d\n", res);
+	}
 	
+	return res;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_dai_slave_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+{
+	printk(KERN_ERR "pcm186x: Slave mode is to be implemented\n");
+	return -1;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+{
+	int ret;
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	
+	printk(KERN_INFO "pcm186x_dai_startup\n");
+	
+	switch(pcm186x->fmt & SND_SOC_DAIFMT_MASTER_MASK)
+	{
+		case SND_SOC_DAIFMT_CBM_CFM:
+		case SND_SOC_DAIFMT_CBM_CFS:
+			res = pcm186x_dai_master_startup(substream,dai);
+			break;
+			
+		case SND_SOC_DAIFMT_CBS_CFS:
+			res = pcm186x_dai_slave_startup(substream,dai);
+			break;
+			
+		default:
+			res = -EINVAL;
+			break;
+	}
 	return res;
 }
 
@@ -525,12 +570,22 @@ static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
 	printk(KERN_INFO "pcm186x_hw_params\n");
-	
-	bitsPerSample = snd_pcm_format_physical_width(params_format(params));
-	res = pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
-	if(!res)
-		printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
-		
+
+	switch(pcm186x->fmt & SND_SOC_DAIFMT_MASTER_MASK)
+	{
+		case SND_SOC_DAIFMT_CBM_CFM:
+		case SND_SOC_DAIFMT_CBM_CFS:
+			bitsPerSample = snd_pcm_format_physical_width(params_format(params));
+			res = pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
+			if(!res)
+				printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
+			break;
+			
+		case SND_SOC_DAIFMT_CBS_CFS:
+		default:
+			res = -EINVAL;
+			break;
+	}		
 	return res;
 }
 
@@ -549,35 +604,11 @@ static int pcm186x_set_fmt(struct snd_soc_dai *dai,unsigned int fmt)
 
 /*----------------------------------------------------------------------------------*/
 
-static int pcm186x_set_sysclk(struct snd_soc_dai *dai,int clk_id, unsigned int freq, int dir)
-{
-	int res;
-	struct snd_soc_codec *codec = dai->codec;
-	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
-	
-	printk(KERN_INFO "pcm186x_set_sysclk\n");
-	
-	if(clk_id == PCM186X_MASTER_CLK)
-	{
-		pcm186x->mclk_rate = freq;
-		res = 0;
-	}
-	else
-	{
-		printk(KERN_ERR "pcm186x: Unknown clock id\n");
-		res = 1;
-	}
-	return res;
-}
-
-/*----------------------------------------------------------------------------------*/
-
 static const struct snd_soc_dai_ops pcm186x_dai_ops = {
 	.startup = pcm186x_dai_startup,
 	.shutdown = pcm186x_dai_shutdown,
 	.hw_params = pcm186x_hw_params,
 	.set_fmt = pcm186x_set_fmt,
-	.set_sysclk = pcm186x_set_sysclk,
 };
 
 /*----------------------------------------------------------------------------------*/
@@ -604,7 +635,7 @@ static struct snd_soc_dai_driver pcm186x_dai = {
 	.name = "pcm186x-hifi",
 	.capture = {
 		.stream_name = "Capture",
-		.channels_min = 2,
+		.channels_min = 1,
 		.channels_max = 2,
 		.rates = PCM186X_RATES,
 		.formats = PCM186X_FORMATS,
@@ -616,6 +647,59 @@ static struct snd_soc_dai_driver pcm186x_dai = {
 static const struct snd_soc_codec_driver soc_codec_dev_pcm186x = {
 	.idle_bias_off = false,
 };
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_probe(struct device *dev, struct regmap *regmap)
+{
+	int ret;
+	struct pcm186x_priv *pcm186x;
+	
+	pcm186x = devm_kzalloc(dev,sizeof(struct pcm186x_priv),GFP_KERNEL);
+	if(!pcm186x)
+	{
+		return -ENOMEM;
+	}
+	
+	dev_set_drvdata(dev,pcm186x);
+	pcm186x->regmap = regmap;
+	
+	pcm186x->sclk = devm_clk_get(dev,NULL);
+	if(PTR_ERR(pcm186x->sclk) == -EPROBE_DEFER)
+	{
+		return -EPROBE_DEFER;
+	}
+	if(!IS_ERR(pcm186x->sclk))
+	{
+		ret = clk_prepare_enable(pcm186x->sclk);
+		if(ret)
+		{
+			dev_err(dev,"Failed to enable SCLK: %d\n",ret);
+			return ret;
+		}
+	}
+
+	ret = snd_soc_register_codec(dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
+	if(ret)
+	{
+		dev_err(dev, "Failed to register CODEC: %d\n", ret);
+	}
+	
+	return ret;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static void pcm186x_remove(struct device *dev)
+{
+	struct pcm186x_priv *pcm186x = dev_get_drvdata(dev);
+
+	snd_soc_unregister_codec(dev);
+	if (!IS_ERR(pcm186x->sclk))
+	{
+		clk_disable_unprepare(pcm186x->sclk);
+	}
+}
 
 /*----------------------------------------------------------------------------------*/
 
@@ -638,22 +722,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 		return PTR_ERR(regmap);
 	}
 	
-	pcm186x = devm_kzalloc(&i2c->dev,sizeof(struct pcm186x_priv),GFP_KERNEL);
-	if(pcm186x==NULL)
-	{
-		return -ENOMEM;
-	}
-	
-	dev_set_drvdata(&i2c->dev,pcm186x);
-	pcm186x->regmap = regmap;
-	pcm186x->mclk_rate = PCM186x_ADC_MASTERCLOCK_DEFAULT;
-	pcm186x->powered = 0;
-
-	ret = snd_soc_register_codec(&i2c->dev,&soc_codec_dev_pcm186x,&pcm186x_dai,1);
-	if (ret < 0) {
-		dev_err(&i2c->dev, "Failed to register CODEC: %d\n", ret);
-	}
-	return ret;
+	return pcm186x_probe(&i2c->dev,regmap);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -661,7 +730,7 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 static int pcm186x_i2c_remove(struct i2c_client *i2c)
 {
 	printk(KERN_INFO "pcm186x_i2c_remove\n");
-	snd_soc_unregister_codec(&i2c->dev);
+	pcm186x_remove(&i2c->dev);
 	return 0;
 }
 
@@ -669,10 +738,10 @@ static int pcm186x_i2c_remove(struct i2c_client *i2c)
 
 static struct i2c_driver pcm186x_i2c_driver = {
 	.driver		= {
-	.name	= "pcm186x",
-	.owner	= THIS_MODULE,
-	.of_match_table = pcm186x_of_match,
-},
+		.name	= "pcm186x",
+		.owner	= THIS_MODULE,
+		.of_match_table = pcm186x_of_match,
+	},
 	.probe 		= pcm186x_i2c_probe,
 	.remove 	= pcm186x_i2c_remove,
 	.id_table	= pcm186x_i2c_id,
