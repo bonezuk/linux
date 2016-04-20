@@ -18,6 +18,7 @@
 #include <linux/i2c.h>
 #include <linux/platform_device.h>
 #include <linux/gcd.h>
+#include <linux/clk.h>
 
 #include <sound/core.h>
 #include <sound/pcm.h>
@@ -481,7 +482,7 @@ static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
 
 static int pcm186x_dai_master_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
-	int res,rate,bitsPerSample;
+	int res,rate,mClkRate,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
@@ -508,7 +509,14 @@ static int pcm186x_dai_master_startup(struct snd_pcm_substream *substream,struct
 		rate = 48000;
 	}
 	
-	res = pcm186x_setup_clocks(codec,rate,bitsPerSample,pcm186x->mclk_rate);
+	mClkRate = (int)clk_get_rate(pcm186x->sclk);
+	if(!mClkRate)
+	{
+		dev_err(dev, "No rate for master clock found\n");
+		return -EINVAL;
+	}
+	
+	res = pcm186x_setup_clocks(codec,rate,bitsPerSample,mClkRate);
 	if(res)
 	{
 		dev_err(dev, "Error setting up PCM186x DSP clock %d\n", res);
@@ -529,7 +537,7 @@ static int pcm186x_dai_slave_startup(struct snd_pcm_substream *substream,struct 
 
 static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
 {
-	int ret;
+	int res;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
@@ -565,6 +573,8 @@ static void pcm186x_dai_shutdown(struct snd_pcm_substream *substream,struct snd_
 
 static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
+	pcm186x_dai_startup
+	
 	int res,bitsPerSample;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
