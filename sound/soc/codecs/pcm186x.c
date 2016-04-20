@@ -480,49 +480,50 @@ static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
 
 /*----------------------------------------------------------------------------------*/
 
-static int pcm186x_dai_master_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+static int pcm186x_set_master_capture_rate(struct snd_soc_dai *dai,int bps,int fs)
 {
-	int res,rate,mClkRate,bitsPerSample;
+	int mclkrate;
 	struct snd_soc_codec *codec = dai->codec;
-	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
-	struct device *dev = dai->dev;
-
-	printk(KERN_INFO "pcm186x_dai_master_startup\n");
-
+	
 	if(IS_ERR(pcm186x->sclk))
 	{
 		dev_err(dev, "Need SCLK for master mode: %ld\n", PTR_ERR(pcm186x->sclk));
 		return PTR_ERR(pcm186x->sclk);
 	}
-	
-	pcm186x_power_device(codec,1);
-	
-	bitsPerSample = snd_pcm_format_physical_width(runtime->format);
-	if(bitsPerSample < 16)
-	{
-		bitsPerSample = 16;
-	}
-	rate = runtime->rate;
-	if(!rate)
-	{
-		rate = 48000;
-	}
-	
-	mClkRate = (int)clk_get_rate(pcm186x->sclk);
+	if(bps < 16)
+		bps = 16;
+	if(!fs)
+		fs = 48000;
+		
+	mclkrate = (int)clk_get_rate(pcm186x->sclk);
 	if(!mClkRate)
 	{
 		dev_err(dev, "No rate for master clock found\n");
 		return -EINVAL;
 	}
 	
-	res = pcm186x_setup_clocks(codec,rate,bitsPerSample,mClkRate);
+	printk(KERN_INFO "PCM186x clock rate: %d, frequency: %d, bps: %d\n",mclkrate,fs,bps);
+
+	res = pcm186x_setup_clocks(codec,fs,bps,mclkrate);
 	if(res)
-	{
 		dev_err(dev, "Error setting up PCM186x DSP clock %d\n", res);
-	}
 	
 	return res;
+}
+
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_dai_master_startup(struct snd_pcm_substream *substream,struct snd_soc_dai *dai)
+{
+	struct snd_soc_codec *codec = dai->codec;
+	struct snd_pcm_runtime *runtime = substream->runtime;
+
+	printk(KERN_INFO "pcm186x_dai_master_startup\n");
+
+	pcm186x_power_device(codec,1);
+
+	return pcm186x_set_master_capture_rate(dai,snd_pcm_format_physical_width(runtime->format),runtime->rate);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -573,9 +574,7 @@ static void pcm186x_dai_shutdown(struct snd_pcm_substream *substream,struct snd_
 
 static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_hw_params *params,struct snd_soc_dai *dai)
 {
-	pcm186x_dai_startup
-	
-	int res,bitsPerSample;
+	int res,bps;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
@@ -585,10 +584,8 @@ static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_
 	{
 		case SND_SOC_DAIFMT_CBM_CFM:
 		case SND_SOC_DAIFMT_CBM_CFS:
-			bitsPerSample = snd_pcm_format_physical_width(params_format(params));
-			res = pcm186x_setup_clocks(codec,params_rate(params),bitsPerSample,pcm186x->mclk_rate);
-			if(!res)
-				printk(KERN_ERR "pcm186x: Error setting up ADC clocks\n");
+			bps = snd_pcm_format_physical_width(params_format(params));
+			res = pcm186x_set_master_capture_rate(dai,params_rate(params),bps);
 			break;
 			
 		case SND_SOC_DAIFMT_CBS_CFS:
