@@ -482,9 +482,10 @@ static void pcm186x_power_device(struct snd_soc_codec *codec,int turnon)
 
 static int pcm186x_set_master_capture_rate(struct snd_soc_dai *dai,int bps,int fs)
 {
-	int mclkrate;
+	int res,mclkrate;
 	struct snd_soc_codec *codec = dai->codec;
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
+	struct device *dev = dai->dev;
 	
 	if(IS_ERR(pcm186x->sclk))
 	{
@@ -492,12 +493,16 @@ static int pcm186x_set_master_capture_rate(struct snd_soc_dai *dai,int bps,int f
 		return PTR_ERR(pcm186x->sclk);
 	}
 	if(bps < 16)
+	{
 		bps = 16;
+	}
 	if(!fs)
+	{
 		fs = 48000;
+	}
 		
 	mclkrate = (int)clk_get_rate(pcm186x->sclk);
-	if(!mClkRate)
+	if(!mclkrate)
 	{
 		dev_err(dev, "No rate for master clock found\n");
 		return -EINVAL;
@@ -507,7 +512,9 @@ static int pcm186x_set_master_capture_rate(struct snd_soc_dai *dai,int bps,int f
 
 	res = pcm186x_setup_clocks(codec,fs,bps,mclkrate);
 	if(res)
+	{
 		dev_err(dev, "Error setting up PCM186x DSP clock %d\n", res);
+	}
 	
 	return res;
 }
@@ -712,9 +719,7 @@ static void pcm186x_remove(struct device *dev)
 
 static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
 {
-	int ret;
 	struct regmap *regmap;
-	struct pcm186x_priv *pcm186x;
 	struct regmap_config config = pcm186x_regmap;
 
 	printk(KERN_INFO "pcm186x_i2c_probe\n");
