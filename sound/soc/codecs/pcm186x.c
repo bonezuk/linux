@@ -25,6 +25,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/jack.h>
+#include <sound/tlv.h>
 
 #include <linux/pm.h>
 #include <linux/regmap.h>
@@ -196,6 +197,37 @@ const struct regmap_config pcm186x_regmap = {
 	.reg_defaults = pcm186x_reg_defaults,
 	.num_reg_defaults = ARRAY_SIZE(pcm186x_reg_defaults),
 	.cache_type = REGCACHE_RBTREE,
+};
+
+/*----------------------------------------------------------------------------------*/
+/* Controls */
+/*----------------------------------------------------------------------------------*/
+
+static const DECLARE_TLV_DB_MINMAX(pga_tlv, -1200, 4000);
+
+static const char * const pcm186x_line_select_texts[] = {
+	"Line In 1",
+	"Line In 2",
+	"Line In 3",
+	"Line In 4",
+};
+
+static const unsigned int pcm186x_line_select_values[] = {
+	1, 2, 4, 8,
+};
+
+static SOC_VALUE_ENUM_SINGLE_DECL(pcm186x_line_select_left_1, PCM186x_ADC1_INPUT_SELECT_L, 0, 0xf, pcm186x_line_select_texts, pcm186x_line_select_values);
+static SOC_VALUE_ENUM_SINGLE_DECL(pcm186x_line_select_right_1, PCM186x_ADC1_INPUT_SELECT_R, 0, 0xf, pcm186x_line_select_texts, pcm186x_line_select_values);
+static SOC_VALUE_ENUM_SINGLE_DECL(pcm186x_line_select_left_2, PCM186x_ADC2_INPUT_SELECT_L, 0, 0xf, pcm186x_line_select_texts, pcm186x_line_select_values);
+static SOC_VALUE_ENUM_SINGLE_DECL(pcm186x_line_select_right_2, PCM186x_ADC2_INPUT_SELECT_R, 0, 0xf, pcm186x_line_select_texts, pcm186x_line_select_values);
+
+static const struct snd_kcontrol_new pcm186x_controls[] = {
+	SOC_DOUBLE_R_TLV("Mic 1 Boost Volume", PCM186x_PGA_VAL_CH1_L, PCM186x_PGA_VAL_CH1_R, 0x50, 0xe8, 1, pga_tlv),
+	SOC_DOUBLE_R_TLV("Mic 2 Boost Volume", PCM186x_PGA_VAL_CH2_L, PCM186x_PGA_VAL_CH2_R, 0x50, 0xe8, 1, pga_tlv),
+	SOC_ENUM("ADC Input Left Select 1", pcm186x_line_select_left_1),
+	SOC_ENUM("ADC Input Right Select 1", pcm186x_line_select_right_1),
+	SOC_ENUM("ADC Input Left Select 2", pcm186x_line_select_left_2),
+	SOC_ENUM("ADC Input Right Select 2", pcm186x_line_select_right_2),
 };
 
 /*----------------------------------------------------------------------------------*/
@@ -592,7 +624,7 @@ static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_
 		case SND_SOC_DAIFMT_CBM_CFM:
 		case SND_SOC_DAIFMT_CBM_CFS:
 			bps = snd_pcm_format_physical_width(params_format(params));
-			res = pcm186x_set_master_capture_rate(dai,params_rate(params),bps);
+			res = pcm186x_set_master_capture_rate(dai,bps,params_rate(params));
 			break;
 			
 		case SND_SOC_DAIFMT_CBS_CFS:
@@ -660,6 +692,8 @@ static struct snd_soc_dai_driver pcm186x_dai = {
 
 static const struct snd_soc_codec_driver soc_codec_dev_pcm186x = {
 	.idle_bias_off = false,
+	.controls = pcm186x_controls,
+	.num_controls = ARRAY_SIZE(pcm186x_controls),
 };
 
 /*----------------------------------------------------------------------------------*/
