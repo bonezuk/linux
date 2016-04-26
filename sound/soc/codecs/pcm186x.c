@@ -144,7 +144,18 @@ static const struct reg_default pcm186x_reg_defaults[] = {
 	{PCM186x_CURRENT_FREQUENCY,0x00},
 	{PCM186x_CURRENT_CLK_RATIO,0x00},
 	{PCM186x_CLK_STATUS,0x00},
-	{PCM186x_DVDD_STATUS,0x00}
+	{PCM186x_DVDD_STATUS,0x00},	
+	{PCM186x_DSP_MAPPER, 0x17},
+	{PCM186x_MAPPER_ADDRESS, 0x00},
+	{PCM186x_COFF_A1, 0x00},
+	{PCM186x_COFF_A2, 0x00},
+	{PCM186x_COFF_A3, 0x00},
+	{PCM186x_COFF_B1, 0x00},
+	{PCM186x_COFF_B2, 0x00},
+	{PCM186x_COFF_B3, 0x00},
+	{PCM186x_OSC_POWER_CTRL, 0x00},
+	{PCM186x_MIC_BIAS_CTRL, 0x01},
+	{PCM186x_CURRENT_TRIM, 0x00}
 };
 
 static bool pcm186x_readable(struct device *dev,unsigned int reg)
@@ -414,6 +425,17 @@ static void pcm186x_print_registers(struct snd_soc_codec *codec)
 	pcm186x_print_register(codec,"Pg(0)/Reg(116) PCM186x_CURRENT_CLK_RATIO",PCM186x_CURRENT_CLK_RATIO);
 	pcm186x_print_register(codec,"Pg(0)/Reg(117) PCM186x_CLK_STATUS",PCM186x_CLK_STATUS);
 	pcm186x_print_register(codec,"Pg(0)/Reg(120) PCM186x_DVDD_STATUS",PCM186x_DVDD_STATUS);
+	pcm186x_print_register(codec,"Pg(1)/Reg(1) PCM186x_DSP_MAPPER",PCM186x_DSP_MAPPER);
+	pcm186x_print_register(codec,"Pg(1)/Reg(2) PCM186x_MAPPER_ADDRESS",PCM186x_MAPPER_ADDRESS);
+	pcm186x_print_register(codec,"Pg(1)/Reg(4) PCM186x_COFF_A1",PCM186x_COFF_A1);
+	pcm186x_print_register(codec,"Pg(1)/Reg(5) PCM186x_COFF_A2",PCM186x_COFF_A2);
+	pcm186x_print_register(codec,"Pg(1)/Reg(6) PCM186x_COFF_A3",PCM186x_COFF_A3);
+	pcm186x_print_register(codec,"Pg(1)/Reg(8) PCM186x_COFF_B1",PCM186x_COFF_B1);
+	pcm186x_print_register(codec,"Pg(1)/Reg(9) PCM186x_COFF_B2",PCM186x_COFF_B2);
+	pcm186x_print_register(codec,"Pg(1)/Reg(10) PCM186x_COFF_B3",PCM186x_COFF_B3);
+	pcm186x_print_register(codec,"Pg(3)/Reg(18) PCM186x_OSC_POWER_CTRL",PCM186x_OSC_POWER_CTRL);
+	pcm186x_print_register(codec,"Pg(3)/Reg(21) PCM186x_MIC_BIAS_CTRL",PCM186x_MIC_BIAS_CTRL);
+	pcm186x_print_register(codec,"Pg(253)/Reg(20) PCM186x_CURRENT_TRIM",PCM186x_CURRENT_TRIM);
 }
 
 /*----------------------------------------------------------------------------------*/
@@ -801,6 +823,7 @@ static int pcm186x_dai_startup(struct snd_pcm_substream *substream,struct snd_so
 	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
 	printk(KERN_INFO "pcm186x_dai_startup\n");
+	pcm186x_print_registers(codec);
 	
 	switch(pcm186x->fmt & SND_SOC_DAIFMT_MASTER_MASK)
 	{
@@ -850,7 +873,10 @@ static int pcm186x_hw_params(struct snd_pcm_substream *substream,struct snd_pcm_
 		default:
 			res = -EINVAL;
 			break;
-	}		
+	}
+	
+	pcm186x_print_registers(codec);
+	
 	return res;
 }
 

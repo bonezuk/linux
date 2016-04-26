@@ -111,6 +111,20 @@
 #define PCM186x_CLK_STATUS                      (PCM186x_PAGE_BASE(0) + 117)
 #define PCM186x_DVDD_STATUS                     (PCM186x_PAGE_BASE(0) + 120)
 
+#define PCM186x_DSP_MAPPER                      (PCM186x_PAGE_BASE(1) + 1)
+#define PCM186x_MAPPER_ADDRESS                  (PCM186x_PAGE_BASE(1) + 2)
+#define PCM186x_COFF_A1                         (PCM186x_PAGE_BASE(1) + 4)
+#define PCM186x_COFF_A2                         (PCM186x_PAGE_BASE(1) + 5)
+#define PCM186x_COFF_A3                         (PCM186x_PAGE_BASE(1) + 6)
+#define PCM186x_COFF_B1                         (PCM186x_PAGE_BASE(1) + 8)
+#define PCM186x_COFF_B2                         (PCM186x_PAGE_BASE(1) + 9)
+#define PCM186x_COFF_B3                         (PCM186x_PAGE_BASE(1) + 10)
+
+#define PCM186x_OSC_POWER_CTRL                  (PCM186x_PAGE_BASE(3) + 18)
+#define PCM186x_MIC_BIAS_CTRL                   (PCM186x_PAGE_BASE(3) + 21)
+
+#define PCM186x_CURRENT_TRIM                    (PCM186x_PAGE_BASE(253) + 20)
+
 #define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 64)
 
 #define PCM186X_PLL_VALID                   0
