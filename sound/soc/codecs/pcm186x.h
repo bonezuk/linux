@@ -22,7 +22,7 @@
 
 #define PCM186x_VIRT_BASE 0x100
 #define PCM186x_PAGE_LEN  0x100
-#define PCM186x_PAGE_BASE(n)  (PCM186x_PAGE_LEN * n)
+#define PCM186x_PAGE_BASE(n)  (PCM186x_VIRT_BASE + (PCM186x_PAGE_LEN * n))
 
 #define PCM186x_PAGE              0
 
@@ -111,7 +111,7 @@
 #define PCM186x_CLK_STATUS                      (PCM186x_PAGE_BASE(0) + 117)
 #define PCM186x_DVDD_STATUS                     (PCM186x_PAGE_BASE(0) + 120)
 
-#define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 20)
+#define PCM186x_MAX_REGISTER                    (PCM186x_PAGE_BASE(253) + 64)
 
 #define PCM186X_PLL_VALID                   0
 #define PCM186X_PLL_INVALID_INPUTDIV_LOW   -1
