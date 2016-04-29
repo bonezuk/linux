@@ -39,6 +39,7 @@
 
 struct pcm186x_priv
 {
+	struct i2c_client *i2c;
 	struct regmap *regmap;
 	struct clk *sclk;
 	int fmt;
@@ -160,11 +161,15 @@ static const struct reg_default pcm186x_reg_defaults[] = {
 
 static bool pcm186x_readable(struct device *dev,unsigned int reg)
 {
+	/*
 	return reg < 0xff;
+	*/
+	return true;
 }
 
 static bool pcm186x_volatile(struct device *dev,unsigned int reg)
 {
+	/*
 	switch(reg)
 	{
 		case PCM186x_GPIO_STATE:
@@ -182,6 +187,8 @@ static bool pcm186x_volatile(struct device *dev,unsigned int reg)
 		default:
 			return reg < 0xff;
 	}
+	*/
+	return true;
 }
 
 static const struct regmap_range_cfg pcm186x_range = {
@@ -211,6 +218,53 @@ const struct regmap_config pcm186x_regmap = {
 };
 
 /*----------------------------------------------------------------------------------*/
+/* I2C direct */
+/*----------------------------------------------------------------------------------*/
+
+static int pcm186x_i2c_write(struct i2c_client *client,uint8_t aregaddr,uint8_t avalue)
+{
+	uint8_t data[2] = { aregaddr, avalue };
+	struct i2c_msg msg = {
+		.addr = client->addr,
+		.flags = I2C_M_IGNORE_NAK,
+		.len = 2,
+		.buf = (uint8_t *)data
+	};
+	int error;
+	
+	error = i2c_transfer(client->adapter,&msg,1);
+	return (error < 0) ? error : 0;
+}
+
+static int pcm186x_i2c_read(struct i2c_client *client,uint8_t aregaddr,unsigned int value)
+{
+	uint8_t data[2] = { aregaddr };
+	struct i2c_msg msg_set[2] = {
+		{
+			.addr = client->addr,
+			.flags = I2C_M_REV_DIR_ADDR,
+			.len = 1,
+			.buf = (uint8_t *)data
+		},
+		{
+			.addr = client->addr,
+			.flags = I2C_M_RD | I2C_M_NOSTART,
+			.len = 1,
+			.buf = (uint8_t *)data
+		}
+	};
+	int error;
+	
+	error = i2c_transfer(client->adapter,msg_set,2);
+	if(error < 0)
+	{
+		return error;
+	}
+	*value = (unsigned int)data[0];
+	return 0;
+}
+
+/*----------------------------------------------------------------------------------*/
 /* Debug Register Print */
 /*----------------------------------------------------------------------------------*/
 
@@ -218,8 +272,9 @@ static void pcm186x_print_register(struct snd_soc_codec *codec,const char *name,
 {
 	int err;
 	unsigned int val = 0;
+	struct pcm186x_priv *pcm186x = snd_soc_codec_get_drvdata(codec);
 	
-	err = regmap_read(codec->component.regmap,reg,&val);
+	err = pcm186x_i2c_read(pcm186x->i2c,reg,&val);
 	if(!err)
 	{
 		printk(KERN_INFO "Err on read %s register\n",name);
@@ -1000,9 +1055,11 @@ static void pcm186x_remove(struct device *dev)
 
 static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *id)
 {
+	int res;
 	struct regmap *regmap;
 	struct regmap_config config = pcm186x_regmap;
-
+	struct pcm186x_priv *pcm186x;
+	
 	printk(KERN_INFO "pcm186x_i2c_probe\n");
 	
 	/* msb needs to be set to enable auto-increment of addresses */
@@ -1015,7 +1072,13 @@ static int pcm186x_i2c_probe(struct i2c_client *i2c,const struct i2c_device_id *
 		return PTR_ERR(regmap);
 	}
 	
-	return pcm186x_probe(&i2c->dev,regmap);
+	res = pcm186x_probe(&i2c->dev,regmap);
+	if(!res)
+	{
+		pcm186x = dev_get_drvdata(&i2c->dev);
+		pcm186x->i2c = i2c;
+	}
+	return res;
 }
 
 /*----------------------------------------------------------------------------------*/
