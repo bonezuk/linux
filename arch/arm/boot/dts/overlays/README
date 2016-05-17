@@ -136,12 +136,14 @@ Params:
 
         act_led_activelow       Set to "on" to invert the sense of the LED
                                 (default "off")
+                                N.B. For Pi3 see pi3-act-led overlay.
 
         act_led_gpio            Set which GPIO to use for the activity LED
                                 (in case you want to connect it to an external
                                 device)
                                 (default "16" on a non-Plus board, "47" on a
                                 Plus or Pi 2)
+                                N.B. For Pi3 see pi3-act-led overlay.
 
         pwr_led_trigger
         pwr_led_activelow
@@ -200,6 +202,32 @@ Name:   bmp085_i2c-sensor
 Info:   Configures the BMP085/BMP180 digital barometric pressure and temperature
         sensors from Bosch Sensortec
 Load:   dtoverlay=bmp085_i2c-sensor
+Params: <None>
+
+
+Name:   boomberry-dac
+Info:   Configures the BoomBerry DAC HAT, Amp HAT, DAC Zero and Amp Zero audio
+        cards
+Load:   dtoverlay=boomberry-dac,<param>=<val>
+Params: 24db_digital_gain       Allow gain to be applied via the PCM512x codec
+                                Digital volume control. Enable with
+                                "dtoverlay=boomberry-dac,24db_digital_gain"
+                                (The default behaviour is that the Digital
+                                volume control is limited to a maximum of
+                                0dB. ie. it can attenuate but not provide
+                                gain. For most users, this will be desired
+                                as it will prevent clipping. By appending
+                                the 24dB_digital_gain parameter, the Digital
+                                volume control will allow up to 24dB of
+                                gain. If this parameter is enabled, it is the
+                                responsibility of the user to ensure that
+                                the Digital volume control is set to a value
+                                that does not result in clipping/distortion!)
+
+
+Name:   boomberry-digi
+Info:   Configures the BoomBerry Digi HAT and Digi Zero audio cards
+Load:   dtoverlay=boomberry-digi
 Params: <None>
 
 
@@ -342,7 +370,11 @@ Info:   Adds support for a number of I2C Real Time Clock devices
 Load:   dtoverlay=i2c-rtc,<param>=<val>
 Params: ds1307                  Select the DS1307 device
 
+        ds1339                  Select the DS1339 device
+
         ds3231                  Select the DS3231 device
+
+        mcp7940x                Select the MCP7940x device
 
         mcp7941x                Select the MCP7941x device
 
@@ -351,6 +383,8 @@ Params: ds1307                  Select the DS1307 device
         pcf8523                 Select the PCF8523 device
 
         pcf8563                 Select the PCF8563 device
+
+        trickle-resistor-ohms   Resistor value for trickle charge (DS1339-only)
 
 
 Name:   i2c0-bcm2708
@@ -478,6 +512,23 @@ Params: speed                   Display SPI bus speed
 [ The pcf8563-rtc overlay has been deleted. See i2c-rtc. ]
 
 
+Name:   pi3-act-led
+Info:   Pi3 uses a GPIO expander to drive the LEDs which can only be accessed
+        from the VPU. There is a special driver for this with a separate DT
+        node, which has the unfortunate consequence of breaking the
+        act_led_gpio and act_led_activelow dtparams.
+        This overlay changes the GPIO controller back to the standard one and
+        restores the dtparams.
+Load:   dtoverlay=pi3-act-led,<param>=<val>
+Params: activelow               Set to "on" to invert the sense of the LED
+                                (default "off")
+
+        gpio                    Set which GPIO to use for the activity LED
+                                (in case you want to connect it to an external
+                                device)
+                                REQUIRED
+
+
 Name:   pi3-disable-bt
 Info:   Disable Pi3 Bluetooth and restore UART0/ttyAMA0 over GPIOs 14 & 15
         N.B. To disable the systemd service that initialises the modem so it
@@ -490,8 +541,10 @@ Name:   pi3-miniuart-bt
 Info:   Switch Pi3 Bluetooth function to use the mini-UART (ttyS0) and restore
         UART0/ttyAMA0 over GPIOs 14 & 15. Note that this may reduce the maximum
         usable baudrate.
-        N.B. It is also necessary to edit /lib/systemd/system/hciuart.server
-        and replace ttyAMA0 with ttyS0.
+        N.B. It is also necessary to edit /lib/systemd/system/hciuart.service
+        and replace ttyAMA0 with ttyS0, unless you have a system with udev rules
+        that create /dev/serial0 and /dev/serial1, in which case use
+        /dev/serial1 instead because it will always be correct.
 Load:   dtoverlay=pi3-miniuart-bt
 Params: <None>
 
