@@ -38,12 +38,12 @@
 #define BM2835_MMAL_MODULE_NAME "bcm2835-v4l2"
 #define MIN_WIDTH 16
 #define MIN_HEIGHT 16
-#define MAX_WIDTH 2592
-#define MAX_HEIGHT 1944
 #define MIN_BUFFER_SIZE (80*1024)
 
 #define MAX_VIDEO_MODE_WIDTH 1280
 #define MAX_VIDEO_MODE_HEIGHT 720
+
+#define MAX_BCM2835_CAMERAS 2
 
 MODULE_DESCRIPTION("Broadcom 2835 MMAL video capture");
 MODULE_AUTHOR("Vincent Sanders");
@@ -54,8 +54,13 @@ int bcm2835_v4l2_debug;
 module_param_named(debug, bcm2835_v4l2_debug, int, 0644);
 MODULE_PARM_DESC(bcm2835_v4l2_debug, "Debug level 0-2");
 
-int max_video_width = MAX_VIDEO_MODE_WIDTH;
-int max_video_height = MAX_VIDEO_MODE_HEIGHT;
+#define UNSET (-1)
+static int video_nr[] = {[0 ... (MAX_BCM2835_CAMERAS - 1)] = UNSET };
+module_param_array(video_nr, int, NULL, 0644);
+MODULE_PARM_DESC(video_nr, "videoX start numbers, -1 is autodetect");
+
+static int max_video_width = MAX_VIDEO_MODE_WIDTH;
+static int max_video_height = MAX_VIDEO_MODE_HEIGHT;
 module_param(max_video_width, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(max_video_width, "Threshold for video mode");
 module_param(max_video_height, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -70,11 +75,12 @@ MODULE_PARM_DESC(max_video_height, "Threshold for video mode");
  * our function table list (actually switch to an alternate set, but same
  * result).
  */
-int gst_v4l2src_is_broken = 0;
+static int gst_v4l2src_is_broken;
 module_param(gst_v4l2src_is_broken, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 MODULE_PARM_DESC(gst_v4l2src_is_broken, "If non-zero, enable workaround for Gstreamer");
 
-static struct bm2835_mmal_dev *gdev;	/* global device data */
+/* global device data array */
+static struct bm2835_mmal_dev *gdev[MAX_BCM2835_CAMERAS];
 
 #define FPS_MIN 1
 #define FPS_MAX 90
@@ -413,6 +419,17 @@ static int enable_camera(struct bm2835_mmal_dev *dev)
 {
 	int ret;
 	if (!dev->camera_use_count) {
+		ret = vchiq_mmal_port_parameter_set(
+			dev->instance,
+			&dev->component[MMAL_COMPONENT_CAMERA]->control,
+			MMAL_PARAMETER_CAMERA_NUM, &dev->camera_num,
+			sizeof(dev->camera_num));
+		if (ret < 0) {
+			v4l2_err(&dev->v4l2_dev,
+				 "Failed setting camera num, ret %d\n", ret);
+			return -EINVAL;
+		}
+
 		ret = vchiq_mmal_component_enable(
 				dev->instance,
 				dev->component[MMAL_COMPONENT_CAMERA]);
@@ -647,6 +664,30 @@ static struct vb2_ops bm2835_mmal_video_qops = {
 	IOCTL operations
    ------------------------------------------------------------------*/
 
+static int set_overlay_params(struct bm2835_mmal_dev *dev,
+			      struct vchiq_mmal_port *port)
+{
+	int ret;
+	struct mmal_parameter_displayregion prev_config = {
+	.set = MMAL_DISPLAY_SET_LAYER | MMAL_DISPLAY_SET_ALPHA |
+	    MMAL_DISPLAY_SET_DEST_RECT | MMAL_DISPLAY_SET_FULLSCREEN,
+	.layer = PREVIEW_LAYER,
+	.alpha = dev->overlay.global_alpha,
+	.fullscreen = 0,
+	.dest_rect = {
+		      .x = dev->overlay.w.left,
+		      .y = dev->overlay.w.top,
+		      .width = dev->overlay.w.width,
+		      .height = dev->overlay.w.height,
+		      },
+	};
+	ret = vchiq_mmal_port_parameter_set(dev->instance, port,
+					    MMAL_PARAMETER_DISPLAYREGION,
+					    &prev_config, sizeof(prev_config));
+
+	return ret;
+}
+
 /* overlay ioctl */
 static int vidioc_enum_fmt_vid_overlay(struct file *file, void *priv,
 				       struct v4l2_fmtdesc *f)
@@ -678,10 +719,31 @@ static int vidioc_g_fmt_vid_overlay(struct file *file, void *priv,
 static int vidioc_try_fmt_vid_overlay(struct file *file, void *priv,
 				      struct v4l2_format *f)
 {
-	/* Only support one format so get the current one. */
-	vidioc_g_fmt_vid_overlay(file, priv, f);
+	struct bm2835_mmal_dev *dev = video_drvdata(file);
 
-	/* todo: allow the size and/or offset to be changed. */
+	f->fmt.win.field = V4L2_FIELD_NONE;
+	f->fmt.win.chromakey = 0;
+	f->fmt.win.clips = NULL;
+	f->fmt.win.clipcount = 0;
+	f->fmt.win.bitmap = NULL;
+
+	v4l_bound_align_image(&f->fmt.win.w.width, MIN_WIDTH, dev->max_width, 1,
+			      &f->fmt.win.w.height, MIN_HEIGHT, dev->max_height,
+			      1, 0);
+	v4l_bound_align_image(&f->fmt.win.w.left, MIN_WIDTH, dev->max_width, 1,
+			      &f->fmt.win.w.top, MIN_HEIGHT, dev->max_height,
+			      1, 0);
+
+	v4l2_dbg(1, bcm2835_v4l2_debug, &dev->v4l2_dev,
+		"Overlay: Now w/h %dx%d l/t %dx%d\n",
+		f->fmt.win.w.width, f->fmt.win.w.height,
+		f->fmt.win.w.left, f->fmt.win.w.top);
+
+	v4l2_dump_win_format(1,
+			     bcm2835_v4l2_debug,
+			     &dev->v4l2_dev,
+			     &f->fmt.win,
+			     __func__);
 	return 0;
 }
 
@@ -693,8 +755,11 @@ static int vidioc_s_fmt_vid_overlay(struct file *file, void *priv,
 	vidioc_try_fmt_vid_overlay(file, priv, f);
 
 	dev->overlay = f->fmt.win;
+	if (dev->component[MMAL_COMPONENT_PREVIEW]->enabled) {
+		set_overlay_params(dev,
+			&dev->component[MMAL_COMPONENT_PREVIEW]->input[0]);
+	}
 
-	/* todo: program the preview port parameters */
 	return 0;
 }
 
@@ -704,20 +769,6 @@ static int vidioc_overlay(struct file *file, void *f, unsigned int on)
 	struct bm2835_mmal_dev *dev = video_drvdata(file);
 	struct vchiq_mmal_port *src;
 	struct vchiq_mmal_port *dst;
-	struct mmal_parameter_displayregion prev_config = {
-		.set = MMAL_DISPLAY_SET_LAYER | MMAL_DISPLAY_SET_ALPHA |
-		    MMAL_DISPLAY_SET_DEST_RECT | MMAL_DISPLAY_SET_FULLSCREEN,
-		.layer = PREVIEW_LAYER,
-		.alpha = 255,
-		.fullscreen = 0,
-		.dest_rect = {
-			      .x = dev->overlay.w.left,
-			      .y = dev->overlay.w.top,
-			      .width = dev->overlay.w.width,
-			      .height = dev->overlay.w.height,
-			      },
-	};
-
 	if ((on && dev->component[MMAL_COMPONENT_PREVIEW]->enabled) ||
 	    (!on && !dev->component[MMAL_COMPONENT_PREVIEW]->enabled))
 		return 0;	/* already in requested state */
@@ -749,9 +800,7 @@ static int vidioc_overlay(struct file *file, void *f, unsigned int on)
 	if (ret < 0)
 		goto error;
 
-	ret = vchiq_mmal_port_parameter_set(dev->instance, dst,
-					    MMAL_PARAMETER_DISPLAYREGION,
-					    &prev_config, sizeof(prev_config));
+	ret = set_overlay_params(dev, dst);
 	if (ret < 0)
 		goto error;
 
@@ -782,6 +831,9 @@ static int vidioc_g_fbuf(struct file *file, void *fh,
 	struct vchiq_mmal_port *preview_port =
 		    &dev->component[MMAL_COMPONENT_CAMERA]->
 		    output[MMAL_CAMERA_PORT_PREVIEW];
+
+	a->capability = V4L2_FBUF_CAP_EXTERNOVERLAY |
+			V4L2_FBUF_CAP_GLOBAL_ALPHA;
 	a->flags = V4L2_FBUF_FLAG_OVERLAY;
 	a->fmt.width = preview_port->es.video.width;
 	a->fmt.height = preview_port->es.video.height;
@@ -907,8 +959,9 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 		"Clipping/aligning %dx%d format %08X\n",
 		f->fmt.pix.width, f->fmt.pix.height, f->fmt.pix.pixelformat);
 
-	v4l_bound_align_image(&f->fmt.pix.width, MIN_WIDTH, MAX_WIDTH, 1,
-			      &f->fmt.pix.height, MIN_HEIGHT, MAX_HEIGHT, 1, 0);
+	v4l_bound_align_image(&f->fmt.pix.width, MIN_WIDTH, dev->max_width, 1,
+			      &f->fmt.pix.height, MIN_HEIGHT, dev->max_height,
+			      1, 0);
 	f->fmt.pix.bytesperline = f->fmt.pix.width * mfmt->ybbp;
 
 	/* Image buffer has to be padded to allow for alignment, even though
@@ -1247,9 +1300,10 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 int vidioc_enum_framesizes(struct file *file, void *fh,
 			   struct v4l2_frmsizeenum *fsize)
 {
+	struct bm2835_mmal_dev *dev = video_drvdata(file);
 	static const struct v4l2_frmsize_stepwise sizes = {
-		MIN_WIDTH, MAX_WIDTH, 2,
-		MIN_HEIGHT, MAX_HEIGHT, 2
+		MIN_WIDTH, 0, 2,
+		MIN_HEIGHT, 0, 2
 	};
 	int i;
 
@@ -1262,6 +1316,8 @@ int vidioc_enum_framesizes(struct file *file, void *fh,
 		return -EINVAL;
 	fsize->type = V4L2_FRMSIZE_TYPE_STEPWISE;
 	fsize->stepwise = sizes;
+	fsize->stepwise.max_width = dev->max_width;
+	fsize->stepwise.max_height = dev->max_height;
 	return 0;
 }
 
@@ -1269,6 +1325,7 @@ int vidioc_enum_framesizes(struct file *file, void *fh,
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
 					     struct v4l2_frmivalenum *fival)
 {
+	struct bm2835_mmal_dev *dev = video_drvdata(file);
 	int i;
 
 	if (fival->index)
@@ -1281,8 +1338,8 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 		return -EINVAL;
 
 	/* regarding width & height - we support any within range */
-	if (fival->width < MIN_WIDTH || fival->width > MAX_WIDTH ||
-	    fival->height < MIN_HEIGHT || fival->height > MAX_HEIGHT)
+	if (fival->width < MIN_WIDTH || fival->width > dev->max_width ||
+	    fival->height < MIN_HEIGHT || fival->height > dev->max_height)
 		return -EINVAL;
 
 	fival->type = V4L2_FRMIVAL_TYPE_CONTINUOUS;
@@ -1445,13 +1502,55 @@ static struct video_device vdev_template = {
 	.release = video_device_release_empty,
 };
 
+/* Returns the number of cameras, and also the max resolution supported
+ * by those cameras.
+ */
+static int get_num_cameras(struct vchiq_mmal_instance *instance,
+	unsigned int resolutions[][2], int num_resolutions)
+{
+	int ret;
+	struct vchiq_mmal_component  *cam_info_component;
+	struct mmal_parameter_camera_info_t cam_info = {0};
+	int param_size = sizeof(cam_info);
+	int i;
+
+	/* create a camera_info component */
+	ret = vchiq_mmal_component_init(instance, "camera_info",
+					&cam_info_component);
+	if (ret < 0)
+		/* Unusual failure - let's guess one camera. */
+		return 1;
+
+	if (vchiq_mmal_port_parameter_get(instance,
+					  &cam_info_component->control,
+					  MMAL_PARAMETER_CAMERA_INFO,
+					  &cam_info,
+					  &param_size)) {
+		pr_info("Failed to get camera info\n");
+	}
+	for (i = 0;
+	     i < (cam_info.num_cameras > num_resolutions ?
+			cam_info.num_cameras :
+			num_resolutions);
+	     i++) {
+		resolutions[i][0] = cam_info.cameras[i].max_width;
+		resolutions[i][1] = cam_info.cameras[i].max_height;
+	}
+
+	vchiq_mmal_component_finalise(instance,
+				      cam_info_component);
+
+	return cam_info.num_cameras;
+}
+
 static int set_camera_parameters(struct vchiq_mmal_instance *instance,
-				 struct vchiq_mmal_component *camera)
+				 struct vchiq_mmal_component *camera,
+				 struct bm2835_mmal_dev *dev)
 {
 	int ret;
 	struct mmal_parameter_camera_config cam_config = {
-		.max_stills_w = MAX_WIDTH,
-		.max_stills_h = MAX_HEIGHT,
+		.max_stills_w = dev->max_width,
+		.max_stills_h = dev->max_height,
 		.stills_yuv422 = 1,
 		.one_shot_stills = 1,
 		.max_preview_video_w = (max_video_width > 1920) ?
@@ -1494,7 +1593,8 @@ static int __init mmal_init(struct bm2835_mmal_dev *dev)
 	}
 
 	ret = set_camera_parameters(dev->instance,
-				    dev->component[MMAL_COMPONENT_CAMERA]);
+				    dev->component[MMAL_COMPONENT_CAMERA],
+				    dev);
 	if (ret < 0)
 		goto unreg_camera;
 
@@ -1685,7 +1785,9 @@ static int __init bm2835_mmal_init_device(struct bm2835_mmal_dev *dev,
 	/* video device needs to be able to access instance data */
 	video_set_drvdata(vfd, dev);
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vfd,
+				    VFL_TYPE_GRABBER,
+				    video_nr[dev->camera_num]);
 	if (ret < 0)
 		return ret;
 
@@ -1696,10 +1798,52 @@ static int __init bm2835_mmal_init_device(struct bm2835_mmal_dev *dev,
 	return 0;
 }
 
+void bcm2835_cleanup_instance(struct bm2835_mmal_dev *dev)
+{
+	if (!dev)
+		return;
+
+	v4l2_info(&dev->v4l2_dev, "unregistering %s\n",
+		  video_device_node_name(&dev->vdev));
+
+	video_unregister_device(&dev->vdev);
+
+	if (dev->capture.encode_component) {
+		v4l2_dbg(1, bcm2835_v4l2_debug, &dev->v4l2_dev,
+			 "mmal_exit - disconnect tunnel\n");
+		vchiq_mmal_port_connect_tunnel(dev->instance,
+					       dev->capture.camera_port, NULL);
+		vchiq_mmal_component_disable(dev->instance,
+					     dev->capture.encode_component);
+	}
+	vchiq_mmal_component_disable(dev->instance,
+				     dev->component[MMAL_COMPONENT_CAMERA]);
+
+	vchiq_mmal_component_finalise(dev->instance,
+				      dev->
+				      component[MMAL_COMPONENT_VIDEO_ENCODE]);
+
+	vchiq_mmal_component_finalise(dev->instance,
+				      dev->
+				      component[MMAL_COMPONENT_IMAGE_ENCODE]);
+
+	vchiq_mmal_component_finalise(dev->instance,
+				      dev->component[MMAL_COMPONENT_PREVIEW]);
+
+	vchiq_mmal_component_finalise(dev->instance,
+				      dev->component[MMAL_COMPONENT_CAMERA]);
+
+	v4l2_ctrl_handler_free(&dev->ctrl_handler);
+
+	v4l2_device_unregister(&dev->v4l2_dev);
+
+	kfree(dev);
+}
+
 static struct v4l2_format default_v4l2_format = {
 	.fmt.pix.pixelformat = V4L2_PIX_FMT_JPEG,
 	.fmt.pix.width = 1024,
-	.fmt.pix.bytesperline = 1024,
+	.fmt.pix.bytesperline = 0,
 	.fmt.pix.height = 768,
 	.fmt.pix.sizeimage = 1024*768,
 };
@@ -1709,76 +1853,98 @@ static int __init bm2835_mmal_init(void)
 	int ret;
 	struct bm2835_mmal_dev *dev;
 	struct vb2_queue *q;
+	int camera;
+	unsigned int num_cameras;
+	struct vchiq_mmal_instance *instance;
+	unsigned int resolutions[MAX_BCM2835_CAMERAS][2];
 
-	dev = kzalloc(sizeof(*gdev), GFP_KERNEL);
-	if (!dev)
-		return -ENOMEM;
-
-	/* setup device defaults */
-	dev->overlay.w.left = 150;
-	dev->overlay.w.top = 50;
-	dev->overlay.w.width = 1024;
-	dev->overlay.w.height = 768;
-	dev->overlay.clipcount = 0;
-	dev->overlay.field = V4L2_FIELD_NONE;
-
-	dev->capture.fmt = &formats[3]; /* JPEG */
-
-	/* v4l device registration */
-	snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name),
-		 "%s", BM2835_MMAL_MODULE_NAME);
-	ret = v4l2_device_register(NULL, &dev->v4l2_dev);
-	if (ret)
-		goto free_dev;
-
-	/* setup v4l controls */
-	ret = bm2835_mmal_init_controls(dev, &dev->ctrl_handler);
+	ret = vchiq_mmal_init(&instance);
 	if (ret < 0)
-		goto unreg_dev;
-	dev->v4l2_dev.ctrl_handler = &dev->ctrl_handler;
+		return ret;
 
-	/* mmal init */
-	ret = mmal_init(dev);
-	if (ret < 0)
-		goto unreg_dev;
+	num_cameras = get_num_cameras(instance,
+				      resolutions,
+				      MAX_BCM2835_CAMERAS);
+	if (num_cameras > MAX_BCM2835_CAMERAS)
+		num_cameras = MAX_BCM2835_CAMERAS;
 
-	/* initialize queue */
-	q = &dev->capture.vb_vidq;
-	memset(q, 0, sizeof(*q));
-	q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_READ;
-	q->drv_priv = dev;
-	q->buf_struct_size = sizeof(struct mmal_buffer);
-	q->ops = &bm2835_mmal_video_qops;
-	q->mem_ops = &vb2_vmalloc_memops;
-	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
-	ret = vb2_queue_init(q);
-	if (ret < 0)
-		goto unreg_dev;
+	for (camera = 0; camera < num_cameras; camera++) {
+		dev = kzalloc(sizeof(struct bm2835_mmal_dev), GFP_KERNEL);
+		if (!dev)
+			return -ENOMEM;
 
-	/* v4l2 core mutex used to protect all fops and v4l2 ioctls. */
-	mutex_init(&dev->mutex);
+		dev->camera_num = camera;
+		dev->max_width = resolutions[camera][0];
+		dev->max_height = resolutions[camera][1];
 
-	/* initialise video devices */
-	ret = bm2835_mmal_init_device(dev, &dev->vdev);
-	if (ret < 0)
-		goto unreg_dev;
+		/* setup device defaults */
+		dev->overlay.w.left = 150;
+		dev->overlay.w.top = 50;
+		dev->overlay.w.width = 1024;
+		dev->overlay.w.height = 768;
+		dev->overlay.clipcount = 0;
+		dev->overlay.field = V4L2_FIELD_NONE;
+		dev->overlay.global_alpha = 255;
 
-	/* Really want to call vidioc_s_fmt_vid_cap with the default
-	 * format, but currently the APIs don't join up.
-	 */
-	ret = mmal_setup_components(dev, &default_v4l2_format);
-	if (ret < 0) {
-		v4l2_err(&dev->v4l2_dev,
-			 "%s: could not setup components\n", __func__);
-		goto unreg_dev;
+		dev->capture.fmt = &formats[3]; /* JPEG */
+
+		/* v4l device registration */
+		snprintf(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name),
+			 "%s", BM2835_MMAL_MODULE_NAME);
+		ret = v4l2_device_register(NULL, &dev->v4l2_dev);
+		if (ret)
+			goto free_dev;
+
+		/* setup v4l controls */
+		ret = bm2835_mmal_init_controls(dev, &dev->ctrl_handler);
+		if (ret < 0)
+			goto unreg_dev;
+		dev->v4l2_dev.ctrl_handler = &dev->ctrl_handler;
+
+		/* mmal init */
+		dev->instance = instance;
+		ret = mmal_init(dev);
+		if (ret < 0)
+			goto unreg_dev;
+
+		/* initialize queue */
+		q = &dev->capture.vb_vidq;
+		memset(q, 0, sizeof(*q));
+		q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+		q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_READ;
+		q->drv_priv = dev;
+		q->buf_struct_size = sizeof(struct mmal_buffer);
+		q->ops = &bm2835_mmal_video_qops;
+		q->mem_ops = &vb2_vmalloc_memops;
+		q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+		ret = vb2_queue_init(q);
+		if (ret < 0)
+			goto unreg_dev;
+
+		/* v4l2 core mutex used to protect all fops and v4l2 ioctls. */
+		mutex_init(&dev->mutex);
+
+		/* initialise video devices */
+		ret = bm2835_mmal_init_device(dev, &dev->vdev);
+		if (ret < 0)
+			goto unreg_dev;
+
+		/* Really want to call vidioc_s_fmt_vid_cap with the default
+		 * format, but currently the APIs don't join up.
+		 */
+		ret = mmal_setup_components(dev, &default_v4l2_format);
+		if (ret < 0) {
+			v4l2_err(&dev->v4l2_dev,
+				 "%s: could not setup components\n", __func__);
+			goto unreg_dev;
+		}
+
+		v4l2_info(&dev->v4l2_dev,
+			  "Broadcom 2835 MMAL video capture ver %s loaded.\n",
+			  BM2835_MMAL_VERSION);
+
+		gdev[camera] = dev;
 	}
-
-	v4l2_info(&dev->v4l2_dev,
-		  "Broadcom 2835 MMAL video capture ver %s loaded.\n",
-		  BM2835_MMAL_VERSION);
-
-	gdev = dev;
 	return 0;
 
 unreg_dev:
@@ -1788,8 +1954,11 @@ unreg_dev:
 free_dev:
 	kfree(dev);
 
-	v4l2_err(&dev->v4l2_dev,
-		 "%s: error %d while loading driver\n",
+	for ( ; camera > 0; camera--) {
+		bcm2835_cleanup_instance(gdev[camera]);
+		gdev[camera] = NULL;
+	}
+	pr_info("%s: error %d while loading driver\n",
 		 BM2835_MMAL_MODULE_NAME, ret);
 
 	return ret;
@@ -1797,46 +1966,14 @@ free_dev:
 
 static void __exit bm2835_mmal_exit(void)
 {
-	if (!gdev)
-		return;
+	int camera;
+	struct vchiq_mmal_instance *instance = gdev[0]->instance;
 
-	v4l2_info(&gdev->v4l2_dev, "unregistering %s\n",
-		  video_device_node_name(&gdev->vdev));
-
-	video_unregister_device(&gdev->vdev);
-
-	if (gdev->capture.encode_component) {
-		v4l2_dbg(1, bcm2835_v4l2_debug, &gdev->v4l2_dev,
-			 "mmal_exit - disconnect tunnel\n");
-		vchiq_mmal_port_connect_tunnel(gdev->instance,
-					       gdev->capture.camera_port, NULL);
-		vchiq_mmal_component_disable(gdev->instance,
-					     gdev->capture.encode_component);
+	for (camera = 0; camera < MAX_BCM2835_CAMERAS; camera++) {
+		bcm2835_cleanup_instance(gdev[camera]);
+		gdev[camera] = NULL;
 	}
-	vchiq_mmal_component_disable(gdev->instance,
-				     gdev->component[MMAL_COMPONENT_CAMERA]);
-
-	vchiq_mmal_component_finalise(gdev->instance,
-				      gdev->
-				      component[MMAL_COMPONENT_VIDEO_ENCODE]);
-
-	vchiq_mmal_component_finalise(gdev->instance,
-				      gdev->
-				      component[MMAL_COMPONENT_IMAGE_ENCODE]);
-
-	vchiq_mmal_component_finalise(gdev->instance,
-				      gdev->component[MMAL_COMPONENT_PREVIEW]);
-
-	vchiq_mmal_component_finalise(gdev->instance,
-				      gdev->component[MMAL_COMPONENT_CAMERA]);
-
-	vchiq_mmal_finalise(gdev->instance);
-
-	v4l2_ctrl_handler_free(&gdev->ctrl_handler);
-
-	v4l2_device_unregister(&gdev->v4l2_dev);
-
-	kfree(gdev);
+	vchiq_mmal_finalise(instance);
 }
 
 module_init(bm2835_mmal_init);

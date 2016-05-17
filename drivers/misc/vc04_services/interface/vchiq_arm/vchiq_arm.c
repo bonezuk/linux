@@ -210,6 +210,8 @@ add_completion(VCHIQ_INSTANCE_T instance, VCHIQ_REASON_T reason,
 	VCHIQ_COMPLETION_DATA_T *completion;
 	DEBUG_INITIALISE(g_state.local)
 
+	mutex_lock(&instance->completion_mutex);
+
 	while (instance->completion_insert ==
 		(instance->completion_remove + MAX_COMPLETIONS)) {
 		/* Out of space - wait for the client */
@@ -217,14 +219,20 @@ add_completion(VCHIQ_INSTANCE_T instance, VCHIQ_REASON_T reason,
 		vchiq_log_trace(vchiq_arm_log_level,
 			"add_completion - completion queue full");
 		DEBUG_COUNT(COMPLETION_QUEUE_FULL_COUNT);
+
+		mutex_unlock(&instance->completion_mutex);
 		if (down_interruptible(&instance->remove_event) != 0) {
 			vchiq_log_info(vchiq_arm_log_level,
 				"service_callback interrupted");
 			return VCHIQ_RETRY;
-		} else if (instance->closing) {
+		}
+
+		mutex_lock(&instance->completion_mutex);
+		if (instance->closing) {
+			mutex_unlock(&instance->completion_mutex);
 			vchiq_log_info(vchiq_arm_log_level,
 				"service_callback closing");
-			return VCHIQ_ERROR;
+			return VCHIQ_SUCCESS;
 		}
 		DEBUG_TRACE(SERVICE_CALLBACK_LINE);
 	}
@@ -254,7 +262,10 @@ add_completion(VCHIQ_INSTANCE_T instance, VCHIQ_REASON_T reason,
 	if (reason == VCHIQ_MESSAGE_AVAILABLE)
 		user_service->message_available_pos =
 			instance->completion_insert;
+
 	instance->completion_insert++;
+
+	mutex_unlock(&instance->completion_mutex);
 
 	up(&instance->insert_event);
 
@@ -279,6 +290,7 @@ service_callback(VCHIQ_REASON_T reason, VCHIQ_HEADER_T *header,
 	USER_SERVICE_T *user_service;
 	VCHIQ_SERVICE_T *service;
 	VCHIQ_INSTANCE_T instance;
+	int skip_completion = 0;
 	DEBUG_INITIALISE(g_state.local)
 
 	DEBUG_TRACE(SERVICE_CALLBACK_LINE);
@@ -345,9 +357,6 @@ service_callback(VCHIQ_REASON_T reason, VCHIQ_HEADER_T *header,
 		user_service->msg_queue[user_service->msg_insert &
 			(MSG_QUEUE_SIZE - 1)] = header;
 		user_service->msg_insert++;
-		spin_unlock(&msg_queue_spinlock);
-
-		up(&user_service->insert_event);
 
 		/* If there is a thread waiting in DEQUEUE_MESSAGE, or if
 		** there is a MESSAGE_AVAILABLE in the completion queue then
@@ -356,13 +365,22 @@ service_callback(VCHIQ_REASON_T reason, VCHIQ_HEADER_T *header,
 		if (((user_service->message_available_pos -
 			instance->completion_remove) >= 0) ||
 			user_service->dequeue_pending) {
-			DEBUG_TRACE(SERVICE_CALLBACK_LINE);
 			user_service->dequeue_pending = 0;
-			return VCHIQ_SUCCESS;
+			skip_completion = 1;
 		}
+
+		spin_unlock(&msg_queue_spinlock);
+
+		up(&user_service->insert_event);
 
 		header = NULL;
 	}
+
+	if (skip_completion) {
+		DEBUG_TRACE(SERVICE_CALLBACK_LINE);
+		return VCHIQ_SUCCESS;
+	}
+
 	DEBUG_TRACE(SERVICE_CALLBACK_LINE);
 
 	return add_completion(instance, reason, header, user_service,
